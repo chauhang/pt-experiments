@@ -1,0 +1,4 @@
+{
+ "model_name":"bigscience/bloom-560m",
+ "max_length":"150"
+}
