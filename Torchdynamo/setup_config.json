@@ -1,0 +1,9 @@
+{
+    "backend": "ofi",
+    "model_name":"bert-base-uncased",
+    "mode": "sequence_classification",
+    "num_labels":"2",
+    "save_mode":"pretrained",
+    "do_lower_case":true,
+    "max_length":"80"
+}
