@@ -84,7 +84,7 @@ class NewsDataset(Dataset):
 def my_compiler(gm: torch.fx.GraphModule, example_inputs):
     from torch._dynamo.optimizations import BACKENDS
     print(BACKENDS)
-    trt_compiled = BACKENDS["aot_cudagraphs"](gm, example_inputs)
+    trt_compiled = BACKENDS["eager"](gm, example_inputs)
     return trt_compiled
 
 class NewsClassifier(nn.Module):
