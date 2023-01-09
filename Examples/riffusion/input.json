@@ -1,0 +1,19 @@
+{
+    "alpha": 0.75,
+    "num_inference_steps": 50,
+    "seed_image_id": "vibes",
+  
+    "start": {
+      "prompt": "Sunrise DJ Set",
+      "seed": 42,
+      "denoising": 0.75,
+      "guidance": 7.0
+    },
+  
+    "end": {
+      "prompt": "hard synth solo",
+      "seed": 123,
+      "denoising": 0.75,
+      "guidance": 7.0
+    }
+  }
