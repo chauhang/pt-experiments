@@ -163,7 +163,7 @@ if __name__ == "__main__":
 
     model = SOModel()
 
-    early_stop_callback = EarlyStopping(monitor="val_loss", patience=5,  mode="min")
+    early_stop_callback = EarlyStopping(monitor="val_loss", patience=5, mode="min")
 
     checkpoint_callback = ModelCheckpoint(
         dirpath="checkpoints",
@@ -175,7 +175,9 @@ if __name__ == "__main__":
         mode="min",
     )
     logger = TensorBoardLogger("training-logs", name="so-qa")
-    trainer = pl.Trainer(logger=logger, callbacks=[checkpoint_callback, early_stop_callback], max_epochs=100, gpus=4)
+    trainer = pl.Trainer(
+        logger=logger, callbacks=[checkpoint_callback, early_stop_callback], max_epochs=100, gpus=4
+    )
 
     trainer.fit(model, data_module)
     trainer.test(model, data_module)
