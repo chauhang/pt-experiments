@@ -56,8 +56,19 @@ Once the `text` directory is generated, run the following command
 
 
 ```
-python extract_docs.py.py --folder_path 'knowledgebase' --source_path text --source_name 'docs'
+python extract_docs.py --folder_path 'knowledgebase' --source_path text --source_name 'docs'
 ```
+
+### PyTorch Discuss forums
+
+The following script extracts the links and posts of the top solved posts from PyTorch Discussion forum
+
+```
+python extract_forums.py --folder_path 'knowledgebase' --source_name 'discussion_forum'
+```
+
+The top posts are extracted and saved inside knowledgebase folder.
+
 
 ### Generate Token count
 
@@ -67,6 +78,8 @@ Run the following command to generate token counts
 python token_count.py --file_path 'knowledgebase/docs/docs.json'
 
 python token_count.py --file_path 'knowledgebase/blogs/blogs.json'
+
+python token_count.py --file_path 'knowledgebase/forums/discussion_forum.json'
 ```
 
 ### Output structure
@@ -74,18 +87,20 @@ python token_count.py --file_path 'knowledgebase/blogs/blogs.json'
 the dataset will be created in the following structure
 
 ```
-$ tree knowledgebase/
-knowledgebase/
+$ tree
+.
 ├── blogs
 │   ├── blogs.json
 │   ├── blogs.pkl
 │   └── token_counts.json
-└── docs
-    ├── docs.json
-    ├── docs.pkl
+├── docs
+│   ├── docs.json
+│   ├── docs.pkl
+│   └── token_counts.json
+└── forums
+    ├── discussion_forum.json
+    ├── discussion_forum.pkl
     └── token_counts.json
-
-
 ```
 
 
