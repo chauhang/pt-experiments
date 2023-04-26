@@ -70,6 +70,21 @@ python extract_forums.py --folder_path 'knowledgebase' --source_name 'discussion
 The top posts are extracted and saved inside knowledgebase folder.
 
 
+### Stack Overflow Posts
+
+The StackOverflow Posts archive is 18GB is size and when extracted, it generates a file - posts.xml which is 92GB in size.
+
+To process the file large cpu memory is needed. 
+
+to quickly extract the posts from SO, use the following script
+
+PyTorch question and answers are saved in the format of CSV file. The csv file can be used to generate the dataset.
+
+```
+python extract_forums.py --folder_path 'knowledgebase' --source_name 'discussion_forum'
+```
+
+
 ### Generate Token count
 
 Run the following command to generate token counts
@@ -80,6 +95,9 @@ python token_count.py --file_path 'knowledgebase/docs/docs.json'
 python token_count.py --file_path 'knowledgebase/blogs/blogs.json'
 
 python token_count.py --file_path 'knowledgebase/forums/discussion_forum.json'
+
+ python token_count.py --file_path 'knowledgebase/stack_overflow/stack_overflow.json'
+
 ```
 
 ### Output structure
@@ -97,10 +115,15 @@ $ tree
 │   ├── docs.json
 │   ├── docs.pkl
 │   └── token_counts.json
-└── forums
-    ├── discussion_forum.json
-    ├── discussion_forum.pkl
+├── forums
+│   ├── discussion_forum.json
+│   ├── discussion_forum.pkl
+│   └── token_counts.json
+└── stack_overflow
+    ├── stack_overflow.json
+    ├── stack_overflow.pkl
     └── token_counts.json
+
 ```
 
 

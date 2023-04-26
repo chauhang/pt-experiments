@@ -71,7 +71,7 @@ if __name__ == "__main__":
         help="Path where the output files will be saved",
     )
     parser.add_argument(
-        "--source_path", type=str, default="pt_question_answers_updated.csv", help="Path to df"
+        "--source_path", type=str, default="pt_question_answers.csv", help="Path to df"
     )
     parser.add_argument("--source_name", type=str, default="file", help="Name of the output files")
     args = parser.parse_args()
