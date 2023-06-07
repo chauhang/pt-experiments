@@ -1,15 +1,14 @@
 import logging
 import os
 import sys
+import time
 from argparse import ArgumentParser
 from typing import Any, List, Mapping, Optional
 
+import gradio as gr
 import huggingface_hub as hf_hub
 import torch
-from langchain import OpenAI
-from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.embeddings import HuggingFaceInstructEmbeddings
-from langchain.llms import HuggingFacePipeline
 from langchain.llms.base import LLM
 from llama_index import (
     LLMPredictor,
@@ -28,7 +27,7 @@ from llama_index.storage.docstore import SimpleDocumentStore
 from llama_index.storage.index_store import SimpleIndexStore
 from llama_index.vector_stores import SimpleVectorStore
 from peft import PeftModel
-from transformers import pipeline, TextStreamer, LlamaTokenizer, LlamaForCausalLM
+from transformers import TextStreamer, LlamaTokenizer, LlamaForCausalLM
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
@@ -81,55 +80,6 @@ def read_hf_key_from_env():
     return hf_key
 
 
-def load_openai_model():
-    if not os.getenv("OPENAI_KEY"):
-        raise EnvironmentError("Set openai key - OPENAI_KEY in the environment")
-    else:
-        OPENAI_KEY = os.getenv("OPENAI_KEY")
-    llm = OpenAI(
-        streaming=True,
-        temperature=0,
-        callbacks=[StreamingStdOutCallbackHandler()],
-        openai_api_key=OPENAI_KEY,
-    )
-
-    llm_predictor = LLMPredictor(llm=llm)
-
-    return llm_predictor
-
-
-def load_vicuna_model(args):
-    MODEL_ID = args.vicuna_model_name
-    HF_KEY = read_hf_key_from_env()
-    tokenizer = get_tokenizer(model_id=MODEL_ID, hf_key=HF_KEY)
-
-    streamer = get_streamer(tokenizer=tokenizer, hf_key=HF_KEY)
-    model = LlamaForCausalLM.from_pretrained(
-        MODEL_ID,
-        load_in_8bit=False,
-        low_cpu_mem_usage=True,
-        device_map="auto",
-        max_memory={0: "18GB", 1: "18GB", 2: "18GB", 3: "18GB", "cpu": "10GB"},
-        torch_dtype=torch.float16,
-        use_auth_token=HF_KEY,
-    )
-
-    pipe = pipeline(
-        "text-generation",
-        model=model,
-        tokenizer=tokenizer,
-        streamer=streamer,
-        max_new_tokens=args.prompt_max_output,
-        device_map="auto",
-    )
-
-    hf_pipeline = HuggingFacePipeline(pipeline=pipe)
-
-    llm_predictor = LLMPredictor(llm=hf_pipeline)
-
-    return llm_predictor
-
-
 def load_custom_llm_predictor(args):
     logging.info("Loading custom llm predictor")
 
@@ -167,6 +117,7 @@ def load_custom_llm_predictor(args):
             response = model.generate(
                 **inputs, streamer=streamer, max_new_tokens=args.prompt_max_output
             )
+            response = tokenizer.decode(response[0])
             return response
             # return next(streamer)
 
@@ -183,13 +134,8 @@ def load_custom_llm_predictor(args):
 
 
 def create_llm_predictor(args):
-    # if args.llm == "openai":
-    #     llm_predictor = load_openai_model()
-    # elif args.llm == "vicuna":
-    #     llm_predictor = load_vicuna_model(args=args)
-    # else:
     llm_predictor = load_custom_llm_predictor(args=args)
-    logging.info("<<<<<<<<<<<<<<created LLM Predictor: ")
+    logging.info("created LLM Predictor: ")
 
     return llm_predictor
 
@@ -214,7 +160,6 @@ def set_metadata(filename):
 def read_pytorch_docs(args):
     input_files = []
     doc_path = args.pytorch_docs_path
-    logging.info("<<<<<<<<<<<<<<,Pytorch doc path: ", doc_path)
     for path, subdirs, files in os.walk(doc_path):
         for name in files:
             file = os.path.join(path, name)
@@ -229,26 +174,77 @@ def read_pytorch_docs(args):
     return docs
 
 
-def create_query_engine(simple_node_parser, service_context, docs):
+def create_query_engine(service_context, docs, args):
     logging.info("Inside Create query engine")
     # nodes = simple_node_parser.get_nodes_from_documents(docs)
     logging.info("creating index")
-    index = GPTVectorStoreIndex.from_documents(docs, service_context=service_context)
 
-    # storage_context = StorageContext.from_defaults(
-    #     docstore=SimpleDocumentStore.from_persist_dir(persist_dir="./pytorch_docs_1024"),
-    #     vector_store=SimpleVectorStore.from_persist_dir(persist_dir="./pytorch_docs_1024"),
-    #     index_store=SimpleIndexStore.from_persist_dir(persist_dir="./pytorch_docs_1024"),
-    # )
-    # index = load_index_from_storage(storage_context)
-    # index.storage_context.persist("./pytorch_docs_1024")
+    if args.load_index_from_local == True:
+        storage_context = StorageContext.from_defaults(
+            docstore=SimpleDocumentStore.from_persist_dir(persist_dir="./pytorch_docs_1024"),
+            vector_store=SimpleVectorStore.from_persist_dir(persist_dir="./pytorch_docs_1024"),
+            index_store=SimpleIndexStore.from_persist_dir(persist_dir="./pytorch_docs_1024"),
+        )
+        index = load_index_from_storage(storage_context, service_context=service_context)
+        # index.storage_context.persist("./pytorch_docs_1024")
+    else:
+        index = GPTVectorStoreIndex.from_documents(docs, service_context=service_context)
+
     logging.info("Initializing query engine")
     query_engine = index.as_query_engine(service_context=service_context)
     return query_engine
 
 
 def run_query(query, query_engine):
-    return query_engine.query(query)
+    response = query_engine.query(query)
+    # print("<<<<<<<<<<<<<<<Response type: ", dir(response))
+    print("Response source nodes: ", response.source_nodes)
+    print("Response from backend: ", response.response)
+    return response.response
+
+
+def launch_gradio_interface(query_engine):
+    CSS = """
+    .contain { display: flex; flex-direction: column; }
+    #component-0 { height: 100%; }
+    #chatbot { flex-grow: 1; }
+    """
+
+    def user(user_message, history):
+        return gr.update(value="", interactive=False), history + [[user_message, None]]
+
+    def bot(history):
+        print("Sending Query!")
+        bot_message = run_query(query=history[-1][0], query_engine=query_engine)
+        print(">>>>>>>>>>>>>>>>>>>>>>>>> Query: ", history[-1][0])
+        print(">>>>>>>>>>>>>>>>>>>>>>>> Answer: ", bot_message)
+        history[-1][1] = ""
+        for character in bot_message:
+            history[-1][1] += character
+            time.sleep(0.05)
+            yield history
+
+    with gr.Blocks(css=CSS, theme=gr.themes.Glass()) as demo:
+        chatbot = gr.Chatbot(label="PyTorch Bot", show_label=True, elem_id="chatbot")
+        msg = gr.Textbox(label="Enter Text", show_label=True)
+        with gr.Row():
+            generate = gr.Button("Generate")
+            clear = gr.Button("Clear")
+
+        # res = msg.submit(user, [msg, chatbot], [msg, chatbot], queue=False).then(
+        #     bot, chatbot, chatbot
+        # )
+
+        res = generate.click(user, [msg, chatbot], [msg, chatbot], queue=False).then(
+            bot, chatbot, chatbot
+        )
+
+        res.then(lambda: gr.update(interactive=True), None, [msg], queue=False)
+        clear.click(lambda: None, None, chatbot, queue=False)
+
+    demo.queue().launch(
+        server_name="0.0.0.0", ssl_verify=False, debug=True, show_error=True, share=True
+    )
 
 
 def main(args):
@@ -260,15 +256,13 @@ def main(args):
         prompt_helper=prompt_helper, llm_predictor=llm_predictor, embed_model=embed_model
     )
     logging.info("Created service context: ")
-    text_splitter, simple_node_parser = create_text_splitter(args)
     logging.info("Reading pytorch docs")
     docs = read_pytorch_docs(args)
     logging.info("Pytorch docs read successfully")
-    query_engine = create_query_engine(
-        simple_node_parser=simple_node_parser, service_context=service_context, docs=docs
-    )
+    query_engine = create_query_engine(service_context=service_context, docs=docs, args=args)
     logging.info("Query engine created successfully")
-    run_query(query=args.query, query_engine=query_engine)
+    # run_query(query="What is pytorch", query_engine=query_engine)
+    launch_gradio_interface(query_engine=query_engine)
 
 
 if __name__ == "__main__":
@@ -278,18 +272,10 @@ if __name__ == "__main__":
     )
     parser.add_argument("--prompt_max_input_size", default=4096, help="Max input size for prompt")
     parser.add_argument(
-        "--prompt_max_output", default=2048, help="Max output length for prompt helper"
+        "--prompt_max_output", default=64, help="Max output length for prompt helper"
     )
     parser.add_argument(
         "--embed_model_name", default="hkunlp/instructor-xl", help="Default embed model name"
-    )
-
-    parser.add_argument(
-        "--llm", choices=["openai", "custom", "vicuna"], help="Default embed model name"
-    )
-
-    parser.add_argument(
-        "--vicuna_model_name", default="jagadeesh/vicuna-13b", help="HF vicuna model name"
     )
 
     parser.add_argument(
@@ -308,6 +294,10 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--pytorch_docs_path", default="/home/ubuntu/text", help="Path to pytorch docs"
+    )
+
+    parser.add_argument(
+        "--load_index_from_local", default=True, type=bool, help="Load index from local"
     )
 
     parser.add_argument("--query", default="What is pytorch?", help="User query")
