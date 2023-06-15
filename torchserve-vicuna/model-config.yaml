@@ -1,0 +1,21 @@
+#frontend settings
+minWorkers: 1
+maxWorkers: 1
+batchSize: 1
+maxBatchDelay: 100
+responseTimeout: 120
+deviceType: gpu # cpu, gpu, neuron
+deviceIds: [0,1,2.3] # device index for gpu, neuron
+
+handler:
+    model_path: "/home/ubuntu/serve/examples/large_models/Huggingface_pippy/model/models--jagadeesh--vicuna-13b/snapshots/ca289bf4a98a874f27d3fa166b164827b82e6753"
+    max_length: 2048
+    max_new_tokens: 512
+    manual_seed: 40
+    low_cpu_mem_usage: true
+    device_map: auto
+    offload_folder: offload
+    offload_state_dict: true
+    dtype: fp16
+    num_gpus: 4
+    max_gpu_memory: "10GiB" # Max allocatable VRAM per GPU.
