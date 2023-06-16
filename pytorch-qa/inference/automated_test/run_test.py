@@ -3,6 +3,7 @@ import json
 import os
 import shutil
 
+import huggingface_hub as hf_hub
 import pandas as pd
 import torch
 from langchain import PromptTemplate, LLMChain
@@ -14,7 +15,6 @@ from tqdm import tqdm
 from transformers import LlamaForCausalLM
 from transformers import LlamaTokenizer
 from transformers import TextStreamer
-import huggingface_hub as hf_hub
 
 
 def read_prompt_from_path(prompt_path):
@@ -203,7 +203,7 @@ if __name__ == "__main__":
     parser.add_argument("--prompt_path", type=str, default="prompts.json")
     parser.add_argument("--question_path", type=str, default="questions.json")
     parser.add_argument("--cache_path", type=str, default="/home/ubuntu/.cache/huggingface")
-    parser.add_argument("--results_path", type=str, default="./latest_results")
+    parser.add_argument("--results_path", type=str, default="./test_results")
 
     args = parser.parse_args()
     main(args)
