@@ -1,7 +1,6 @@
 import argparse
 import json
 import os
-import re
 import shutil
 
 import pandas as pd
@@ -32,7 +31,7 @@ def read_questions_from_path(question_path):
 
 def load_model(model_name):
     print("Loading model: ", model_name)
-    api = "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"
+    api = ""
     hf_hub.login(token=api)
     model = LlamaForCausalLM.from_pretrained(
         model_name,
