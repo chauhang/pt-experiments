@@ -112,10 +112,10 @@ python langchain_demo_vicuna_torchserve_grpc.py
 # Model     : shrinath-suresh/alpaca-lora-7b-answer-summary
 # Context   : yes
 # Torchserve: yes
-python langchain_demo_finetuned_tochserve_grpc.py --model_name shrinath-suresh/alpaca-lora-7b-answer-summary --prompt_name QUESTION_WITH_CONTEXT_PROMPT_ADVANCED_PROMPT --prompt_type question_with_context --index_path docs_blogs_faiss_index
+python langchain_demo_finetuned_tochserve_grpc.py --model_name <Model name given at archive generation> --prompt_name QUESTION_WITH_CONTEXT_PROMPT_ADVANCED_PROMPT --prompt_type question_with_context --index_path docs_blogs_faiss_index
 
 # Model     : shrinath-suresh/alpaca-lora-7b-answer-summary
 # Context   : no
 # Torchserve: yes
-python langchain_demo_finetuned_tochserve_grpc.py --model_name shrinath-suresh/alpaca-lora-7b-answer-summary --prompt_name ONLY_QUESTION_ADVANCED_PROMPT --prompt_type only_question
+python langchain_demo_finetuned_tochserve_grpc.py --model_name <Model name given at archive generation> --prompt_name ONLY_QUESTION_ADVANCED_PROMPT --prompt_type only_question
 ```
