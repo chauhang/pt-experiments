@@ -44,10 +44,6 @@ class ModelHandler(BaseHandler, ABC):
         dtypes = {"fp32": torch.float32, "fp16": torch.float16, "bf16": torch.bfloat16}
 
         dtype = dtypes.get(dtype_str, torch.float32)
-
-        print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-        print({i: ctx.model_yaml_config["handler"]["max_gpu_memory"] for i in range(ctx.model_yaml_config["handler"]["num_gpus"])})
-        print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
         
         self.model = LlamaForCausalLM.from_pretrained(
             model_path, 

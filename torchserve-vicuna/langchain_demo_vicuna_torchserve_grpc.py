@@ -2,14 +2,9 @@ import re
 import time
 
 import gradio as gr
-import torch
-import requests
 from langchain import PromptTemplate, LLMChain
 from langchain.llms.base import LLM
 from langchain.memory import ConversationBufferWindowMemory
-from transformers import LlamaForCausalLM
-from transformers import LlamaTokenizer
-from transformers import TextStreamer
 from typing import Iterable
 from gradio.themes.base import Base
 from gradio.themes.utils import colors, fonts, sizes
@@ -22,7 +17,6 @@ import management_pb2
 import management_pb2_grpc
 
 GRPC_URL="localhost:7070"
-URL = "http://localhost:8080/predictions/vicuna-13b"
 MODEL_NAME = "vicuna-13b"
 responses = None
 
@@ -44,7 +38,7 @@ class CustomLLM(LLM):
     model_name = "custom_model"
 
     def _call(self, prompt, stop=None) -> str:        
-        responses = infer_stream(get_inference_stub(), MODEL_NAME, prompt)
+        infer_stream(get_inference_stub(), MODEL_NAME, prompt)
         return ""
 
     @property
