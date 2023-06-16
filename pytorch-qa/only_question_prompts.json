@@ -1,0 +1,5 @@
+{
+    "ONLY_QUESTION_ADVANCED_PROMPT": "{chat_history} Below is an instruction that describes a task. Write a response that appropriately completes the request.\\n\\n### Instruction:\\n{question}\\n\\n### Response:\\n",
+    "ONLY_QUESTION_MEDIUM_PROMPT": "{chat_history} An expert PyTorch engineer would answer this question\\n\\n### Question:\\n{question}\\n\\n### Response:\\n",
+    "ONLY_QUESTION_PROMPT_BASIC_PROMPT": "{chat_history} Answer the following question.\\n\\n### Question:\\n{question}\\n\\n### Response:\\n"
+}

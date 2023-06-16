@@ -1,85 +1,96 @@
-import re
+import argparse
+import json
+import os
 import time
 
 import gradio as gr
+import huggingface_hub as hf_hub
 import torch
 from langchain import PromptTemplate, LLMChain
+from langchain.embeddings.huggingface import HuggingFaceEmbeddings
 from langchain.llms.base import LLM
 from langchain.memory import ConversationBufferWindowMemory
+from langchain.vectorstores.faiss import FAISS
 from transformers import LlamaForCausalLM
 from transformers import LlamaTokenizer
 from transformers import TextStreamer
-import argparse
-from langchain.vectorstores.faiss import FAISS
-from langchain.embeddings.huggingface import HuggingFaceEmbeddings
-
-model = LlamaForCausalLM.from_pretrained(
-    "shrinath-suresh/alpaca-lora-7b-answer-summary",
-    torch_dtype=torch.float16,
-    device_map="auto",
-)
-
-tokenizer = LlamaTokenizer.from_pretrained("shrinath-suresh/alpaca-lora-7b-answer-summary")
-streamer = TextStreamer(tokenizer, skip_prompt=True, Timeout=5)
 
 
-class CustomLLM(LLM):
-    model_name = "shrinath-suresh/alpaca-lora-7b-answer-summary"
-
-    def _call(self, prompt, stop=None) -> str:
-        inputs = tokenizer([prompt], return_tensors="pt")
-
-        response = model.generate(**inputs, streamer=streamer, max_new_tokens=128)
-        response = tokenizer.decode(response[0])
-        return response
-
-    @property
-    def _identifying_params(self):
-        return {"name_of_model": self.model_name}
-
-    @property
-    def _llm_type(self) -> str:
-        return "custom"
-
-
-def get_custom_llm_chain():
-    llm = CustomLLM()
-
-    memory = ConversationBufferWindowMemory(k=3, memory_key="chat_history", input_key="instruction")
-
-    template = (
-        "{chat_history} Below is an instruction that describes a task, "
-        "paired with an input that provides further context. Write a response that appropriately completes the request."
-        "\n\n### Instruction:\n{instruction}\n\n### Input:\n{context}\n\n### Response:\n"
+def load_model(model_name):
+    print("Loading model: ", model_name)
+    if not os.environ["HUGGINGFACE_KEY"]:
+        raise EnvironmentError(
+            "HUGGINGFACE_KEY - key missing. set in the environment before running the script"
+        )
+    hf_hub.login(token=os.environ["HUGGINGFACE_KEY"])
+    model = LlamaForCausalLM.from_pretrained(
+        model_name,
+        torch_dtype=torch.float16,
+        device_map="auto",
     )
+    return model
 
+
+def read_prompt_from_path(prompt_path):
+    with open(prompt_path) as fp:
+        prompt_dict = json.load(fp)
+    return prompt_dict
+
+
+def setup(model_name, model, prompt_template, max_tokens):
+
+    tokenizer = LlamaTokenizer.from_pretrained(model_name)
+    streamer = TextStreamer(tokenizer, skip_prompt=True, Timeout=5)
+
+    class CustomLLM(LLM):
+        def _call(self, prompt, stop=None) -> str:
+            inputs = tokenizer([prompt], return_tensors="pt")
+
+            response = model.generate(**inputs, streamer=streamer, max_new_tokens=max_tokens)
+            response = tokenizer.decode(response[0])
+            return response
+
+        @property
+        def _identifying_params(self):
+            return {"name_of_model": model_name}
+
+        @property
+        def _llm_type(self) -> str:
+            return "custom"
+
+    llm = CustomLLM()
+    memory = ConversationBufferWindowMemory(k=3, memory_key="chat_history", input_key="question")
     prompt = PromptTemplate(
-        template=template, input_variables=["chat_history", "instruction", "context"]
+        template=prompt_template, input_variables=["chat_history", "question", "context"]
     )
 
     llm_chain = LLMChain(prompt=prompt, llm=llm, memory=memory, output_key="result")
-    return llm_chain
+    return llm_chain, memory
 
 
-def run_query(question):
-    print("question>>>>>>>>>>>>>", question)
-    llm_chain = get_custom_llm_chain()
+def parse_response(text):
+    if "### Response:" in text:
+        text = text.split("### Response:")[-1]
+        text = text.split("###")[0]
+        return text
+    else:
+        return text
 
+
+def run_query(llm_chain, question, index_path, memory):
     embeddings = HuggingFaceEmbeddings()
-    faiss_index = FAISS.load_local("docs_blogs_faiss_index", embeddings)
-
+    if not os.path.exists(index_path):
+        raise ValueError(f"Index path - {index_path} does not exists")
+    faiss_index = FAISS.load_local(index_path, embeddings)
     context = faiss_index.similarity_search(question, k=2)
-
-    text = llm_chain.run({"instruction": question, "context": context})
-    print("\n\n")
-    print("*" * 150)
-    print(text)
-    print("*" * 150)
-    print("\n\n")
-    return text
+    result = llm_chain.run({"question": question, "context": context})
+    print(memory.chat_memory.messages[1].content)
+    memory.clear()
+    parsed_response = parse_response(result)
+    return parsed_response
 
 
-def launch_gradio_interface():
+def launch_gradio_interface(llm_chain, index_path, memory):
     CSS = """
     .contain { display: flex; flex-direction: column; }
     #component-0 { height: 100%; }
@@ -91,7 +102,12 @@ def launch_gradio_interface():
 
     def bot(history):
         print("Sending Query!")
-        bot_message = run_query(question=history[-1][0])
+        bot_message = run_query(
+            question=history[-1][0],
+            llm_chain=llm_chain,
+            index_path=index_path,
+            memory=memory
+        )
         print(">>>>>>>>>>>>>>>>>>>>>>>>> Query: ", history[-1][0])
         print(">>>>>>>>>>>>>>>>>>>>>>>> Answer: ", bot_message)
         history[-1][1] = ""
@@ -119,15 +135,38 @@ def launch_gradio_interface():
     )
 
 
-if __name__ == "__main__":
-    launch_gradio_interface()
-    parser = argparse.ArgumentParser(description="")
-    parser.add_argument(
-        "--question",
-        type=str,
-        default="",
-        help="question",
+def main(args):
+    model = load_model(model_name=args.model_name)
+    prompt_dict = read_prompt_from_path(prompt_path=args.prompt_path)
+    if args.prompt_name not in prompt_dict:
+        raise KeyError(
+            f"Invalid key - {args.prompt_name}. Accepted values are {prompt_dict.keys()}"
+        )
+    prompt_template = prompt_dict[args.prompt_name]
+    llm_chain, memory = setup(
+        model_name=args.model_name,
+        model=model,
+        prompt_template=prompt_template,
+        max_tokens=args.max_tokens
     )
-    args = parser.parse_args()
+    # result = run_query(llm_chain=llm_chain, index_path=args.index_path, question="How to save the model", memory=memory)
 
-    run_query(args.question)
+    launch_gradio_interface(
+        llm_chain=llm_chain, index_path=args.index_path, memory=memory
+    )
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser("Langchain with context demo")
+    parser.add_argument(
+        "--model_name", type=str, default="shrinath-suresh/alpaca-lora-7b-answer-summary"
+    )
+    parser.add_argument(
+        "--max_tokens", type=int, default=128
+    )
+    parser.add_argument("--prompt_path", type=str, default="question_with_context.json")
+    parser.add_argument("--prompt_name", type=str, default="QUESTION_WITH_CONTEXT_PROMPT_ADVANCED_PROMPT")
+    parser.add_argument("--index_path", type=str, default="docs_blogs_faiss_index")
+
+    args = parser.parse_args()
+    main(args)

@@ -1,7 +1,10 @@
-import re
+import argparse
+import json
+import os
 import time
 
 import gradio as gr
+import huggingface_hub as hf_hub
 import torch
 from langchain import PromptTemplate, LLMChain
 from langchain.llms.base import LLM
@@ -10,64 +13,75 @@ from transformers import LlamaForCausalLM
 from transformers import LlamaTokenizer
 from transformers import TextStreamer
 
-model = LlamaForCausalLM.from_pretrained(
-    "shrinath-suresh/alpaca-lora-7b-answer-summary",
-    torch_dtype=torch.float16,
-    device_map="auto",
-)
+
+def load_model(model_name):
+    print("Loading model: ", model_name)
+    if not os.environ["HUGGINGFACE_KEY"]:
+        raise EnvironmentError(
+            "HUGGINGFACE_KEY - key missing. set in the environment before running the script"
+        )
+    hf_hub.login(token=os.environ["HUGGINGFACE_KEY"])
+    model = LlamaForCausalLM.from_pretrained(
+        model_name,
+        torch_dtype=torch.float16,
+        device_map="auto",
+    )
+    return model
 
 
-tokenizer = LlamaTokenizer.from_pretrained("shrinath-suresh/alpaca-lora-7b-answer-summary")
-streamer = TextStreamer(tokenizer, skip_prompt=True, Timeout=5)
+def read_prompt_from_path(prompt_path):
+    with open(prompt_path) as fp:
+        prompt_dict = json.load(fp)
+    return prompt_dict
 
 
-class CustomLLM(LLM):
-    model_name = "shrinath-suresh/alpaca-lora-7b-answer-summary"
+def setup(model_name, model, prompt_template, max_tokens):
 
-    def _call(self, prompt, stop=None) -> str:
-        inputs = tokenizer([prompt], return_tensors="pt")
+    tokenizer = LlamaTokenizer.from_pretrained(model_name)
+    streamer = TextStreamer(tokenizer, skip_prompt=True, Timeout=5)
 
-        response = model.generate(**inputs, streamer=streamer, max_new_tokens=128)
-        response = tokenizer.decode(response[0])
-        return response
+    class CustomLLM(LLM):
+        def _call(self, prompt, stop=None) -> str:
+            inputs = tokenizer([prompt], return_tensors="pt")
 
-    @property
-    def _identifying_params(self):
-        return {"name_of_model": self.model_name}
+            response = model.generate(**inputs, streamer=streamer, max_new_tokens=max_tokens)
+            response = tokenizer.decode(response[0])
+            return response
 
-    @property
-    def _llm_type(self) -> str:
-        return "custom"
+        @property
+        def _identifying_params(self):
+            return {"name_of_model": model_name}
+
+        @property
+        def _llm_type(self) -> str:
+            return "custom"
+
+    llm = CustomLLM()
+    memory = ConversationBufferWindowMemory(k=3, memory_key="chat_history", input_key="question")
+
+    prompt = PromptTemplate(template=prompt_template, input_variables=["chat_history", "question"])
+    llm_chain = LLMChain(prompt=prompt, llm=llm, memory=memory, output_key="result")
+    return llm_chain, memory
 
 
-llm = CustomLLM()
-
-memory = ConversationBufferWindowMemory(k=3, memory_key="chat_history")
-
-template = "{chat_history} Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n### Instruction:\n{question}\n\n### Response:\n"
-
-prompt = PromptTemplate(template=template, input_variables=["chat_history", "question"])
-
-llm_chain = LLMChain(prompt=prompt, llm=llm, memory=memory, output_key="result")
-
-
-def run_query(question):
-    text = llm_chain.run(question)
-    pattern = r"### Response:(.*?)###"
-    matches = re.findall(pattern, text, re.DOTALL)
-    if matches:
-        latest_response = matches[-1].strip()
-        print("\n\n")
-        print("*" * 150)
-        print(latest_response)
-        print("*" * 150)
-        print("\n\n")
-        return latest_response
+def parse_response(text):
+    if "### Response:" in text:
+        text = text.split("### Response:")[-1]
+        text = text.split("###")[0]
+        return text
     else:
-        return "I don't know"
+        return text
 
 
-def launch_gradio_interface():
+def run_query(llm_chain, question, memory):
+    result = llm_chain.run(question)
+    print(memory.chat_memory.messages[1].content)
+    memory.clear()
+    parsed_response = parse_response(result)
+    return parsed_response
+
+
+def launch_gradio_interface(llm_chain, memory):
     CSS = """
     .contain { display: flex; flex-direction: column; }
     #component-0 { height: 100%; }
@@ -79,7 +93,7 @@ def launch_gradio_interface():
 
     def bot(history):
         print("Sending Query!")
-        bot_message = run_query(question=history[-1][0])
+        bot_message = run_query(question=history[-1][0], llm_chain=llm_chain, memory=memory)
         print(">>>>>>>>>>>>>>>>>>>>>>>>> Query: ", history[-1][0])
         print(">>>>>>>>>>>>>>>>>>>>>>>> Answer: ", bot_message)
         history[-1][1] = ""
@@ -107,5 +121,34 @@ def launch_gradio_interface():
     )
 
 
+def main(args):
+    model = load_model(model_name=args.model_name)
+    prompt_dict = read_prompt_from_path(prompt_path=args.prompt_path)
+    if args.prompt_name not in prompt_dict:
+        raise KeyError(
+            f"Invalid key - {args.prompt_name}. Accepted values are {prompt_dict.keys()}"
+        )
+    prompt_template = prompt_dict[args.prompt_name]
+    llm_chain, memory = setup(
+        model_name=args.model_name,
+        model=model,
+        prompt_template=prompt_template,
+        max_tokens=args.max_tokens,
+    )
+    # result = run_query(llm_chain=llm_chain, question="How to save the model", memory=memory)
+
+    launch_gradio_interface(llm_chain=llm_chain, memory=memory)
+
+
 if __name__ == "__main__":
-    launch_gradio_interface()
+    parser = argparse.ArgumentParser("Langchain demo")
+    parser.add_argument(
+        "--model_name", type=str, default="shrinath-suresh/alpaca-lora-7b-answer-summary"
+    )
+
+    parser.add_argument("--prompt_path", type=str, default="only_question_prompts.json")
+    parser.add_argument("--max_tokens", type=int, default=128)
+    parser.add_argument("--prompt_name", type=str, default="ONLY_QUESTION_ADVANCED_PROMPT")
+
+    args = parser.parse_args()
+    main(args)
