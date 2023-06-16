@@ -15,15 +15,37 @@ from gradio.themes.base import Base
 from gradio.themes.utils import colors, fonts, sizes
 import time
 
+import grpc
+import inference_pb2
+import inference_pb2_grpc
+import management_pb2
+import management_pb2_grpc
+
+GRPC_URL="localhost:7070"
 URL = "http://localhost:8080/predictions/vicuna-13b"
+MODEL_NAME = "vicuna-13b"
+responses = None
+
+def get_inference_stub():
+    channel = grpc.insecure_channel("")
+    stub = inference_pb2_grpc.InferenceAPIsServiceStub(channel)
+    return stub
+
+def infer_stream(stub, model_name, model_input):
+    global responses
+    input_data = {"data": bytes(model_input, 'utf-8')}
+
+    responses = stub.StreamPredictions(
+        inference_pb2.PredictionsRequest(model_name=model_name, input=input_data)
+    )
+    return responses
 
 class CustomLLM(LLM):
     model_name = "custom_model"
 
-    def _call(self, prompt, stop=None) -> str:
-        payload = {'data': prompt}
-        response = requests.post(URL, files=payload)
-        return response.text
+    def _call(self, prompt, stop=None) -> str:        
+        responses = infer_stream(get_inference_stub(), MODEL_NAME, prompt)
+        return ""
 
     @property
     def _identifying_params(self):
@@ -46,18 +68,8 @@ llm_chain = LLMChain(prompt=prompt, llm=llm, memory=memory, output_key="result")
 
 
 def run_query(question):
-    text = llm_chain.run(question)
-    matches = text.split("### Response:")[1]
-    if matches:
-        latest_response = matches.strip()
-        print("\n\n")
-        print("*" * 150)
-        print(latest_response)
-        print("*" * 150)
-        print("\n\n")
-        return latest_response
-    else:
-        return "I don't know"
+    global responses
+    llm_chain.run(question)
 
 class Seafoam(Base):
     def __init__(
@@ -104,13 +116,25 @@ def launch_gradio_interface():
         return gr.update(value="", interactive=False), history + [[user_message, None]]
 
     def bot(history):
+        global responses
         print("Sending Query!", history[-1][0])
-        bot_message = run_query(history[-1][0])
+        run_query(history[-1][0])
         history[-1][1] = ""
-        for character in bot_message:
-            history[-1][1] += character
-            time.sleep(0.05)
-            yield history
+        try:
+            flag = False
+            for resp in responses:
+                prediction = resp.prediction.decode("utf-8")
+                print(prediction, flush=True, end="")
+                if "### Response:" in prediction:
+                    flag = True
+                    continue 
+                if flag:  
+                    history[-1][1] += prediction
+                    time.sleep(0.05)
+                    yield history
+            flag = False
+        except grpc.RpcError as e:
+            exit(1)
 
     with gr.Blocks(css=CSS, theme=seafoam) as demo:
         chatbot = gr.Chatbot(label="PyTorch Bot", show_label=True, elem_id="chatbot")
@@ -121,10 +145,9 @@ def launch_gradio_interface():
                 generate = gr.Button(value="Send", elem_id="send_button")
         clear = gr.Button("Clear")
 
-
-        # res = msg.submit(user, [msg, chatbot], [msg, chatbot], queue=False).then(
-        #     bot, chatbot, chatbot
-        # )
+        res = msg.submit(user, [msg, chatbot], [msg, chatbot], queue=False).then(
+            bot, chatbot, chatbot
+        )
 
         res = generate.click(user, [msg, chatbot], [msg, chatbot], queue=False).then(
             bot, chatbot, chatbot
