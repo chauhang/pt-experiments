@@ -32,7 +32,6 @@ import management_pb2
 import management_pb2_grpc
 
 GRPC_URL="localhost:7070"
-MODEL_NAME = "vicuna-13b"
 responses = None
 
 def get_inference_stub():
@@ -59,7 +58,7 @@ def setup(model_name, prompt_type, prompt_template):
         def _call(self, prompt, stop=None) -> str:
             global responses
 
-            responses = infer_stream(get_inference_stub(), MODEL_NAME, prompt)
+            responses = infer_stream(get_inference_stub(), model_name, prompt)
             return ""
 
         @property
