@@ -31,8 +31,10 @@ def read_questions_from_path(question_path):
 
 def load_model(model_name):
     print("Loading model: ", model_name)
-    api = ""
-    hf_hub.login(token=api)
+    huggingface_api_key = ""
+    if not huggingface_api_key:
+        raise ValueError("Set your Huggingface key in the code before running the script")
+    hf_hub.login(token=huggingface_api_key)
     model = LlamaForCausalLM.from_pretrained(
         model_name,
         torch_dtype=torch.float16,
