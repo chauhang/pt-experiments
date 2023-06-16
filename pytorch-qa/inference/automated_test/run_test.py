@@ -32,8 +32,7 @@ def read_questions_from_path(question_path):
 
 def load_model(model_name):
     print("Loading model: ", model_name)
-    # Insert your huggingface api key here
-    api = ""
+    api = "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"
     hf_hub.login(token=api)
     model = LlamaForCausalLM.from_pretrained(
         model_name,
@@ -78,9 +77,19 @@ def setup(model_name, prompt_type, model, prompt_template):
     return llm_chain, memory
 
 
+def parse_response(text):
+    if "### Response:" in text:
+        text = text.split("### Response:")[-1]
+        text = text.split("###")[0]
+        return text
+    else:
+        return text
+
+
 def run_query(prompt_type, llm_chain, question_list, memory):
     result_list = []
     chat_history_list = []
+    actual_result_list = []
     for question in tqdm(question_list):
         if prompt_type == "question_with_context":
             embeddings = HuggingFaceEmbeddings()
@@ -93,19 +102,42 @@ def run_query(prompt_type, llm_chain, question_list, memory):
         chat_history = memory.chat_memory.messages[1].content
         chat_history_list.append(chat_history)
 
-        pattern = r"### Response:(.*?)###"
-        matches = re.findall(pattern, result, re.DOTALL)
-        if matches:
-            latest_response = matches[-1].strip()
-        else:
-            latest_response = result
-
-        result_list.append(latest_response)
+        actual_result_list.append(result)
+        parsed_response = parse_response(result)
+        result_list.append(parsed_response)
         memory.clear()
 
     return pd.DataFrame(
-        {"question": question_list, "answer": result_list, "chat_history": chat_history_list}
+        {
+            "question": question_list,
+            "answer": result_list,
+            "full_answer": actual_result_list,
+            "chat_history": chat_history_list,
+        }
     )
+
+
+def write_model_output(model_name, prompt_type, df, result_dir):
+    output_folder_name = model_name
+    output_folder_name = output_folder_name.replace("/", "_")
+
+    if os.path.exists(output_folder_name):
+        print(f"Directory {output_folder_name} already present")
+    else:
+        os.mkdir(output_folder_name)
+
+    if not os.path.exists(args.results_path):
+        os.mkdir(result_dir)
+
+    full_output_folder = os.path.join(result_dir, output_folder_name)
+    if not os.path.exists(full_output_folder):
+        os.mkdir(full_output_folder)
+
+    output_file_path = os.path.join(
+        full_output_folder, f"test_{output_folder_name}_{prompt_type}.csv"
+    )
+    print("Writing output to :", output_file_path)
+    df.to_csv(output_file_path, index=False)
 
 
 def infer(model_name, model, args):
@@ -135,19 +167,12 @@ def infer(model_name, model, args):
             df_list.append(result_df)
 
         final_df = pd.concat(df_list, ignore_index=True)
-        output_folder_name = model_name
-        output_folder_name = output_folder_name.replace("/", "_")
-
-        if os.path.exists(output_folder_name):
-            print(f"Directory {output_folder_name} already present")
-        else:
-            os.mkdir(output_folder_name)
-
-        output_file_path = os.path.join(
-            output_folder_name, f"test_{output_folder_name}_{prompt_type}.csv"
+        write_model_output(
+            model_name=model_name,
+            prompt_type=prompt_type,
+            df=final_df,
+            result_dir=args.results_path,
         )
-        print("Writing output to :", output_file_path)
-        final_df.to_csv(output_file_path, index=False)
 
 
 def read_model_list(model_path):
@@ -177,6 +202,7 @@ if __name__ == "__main__":
     parser.add_argument("--prompt_path", type=str, default="prompts.json")
     parser.add_argument("--question_path", type=str, default="questions.json")
     parser.add_argument("--cache_path", type=str, default="/home/ubuntu/.cache/huggingface")
+    parser.add_argument("--results_path", type=str, default="./latest_results")
 
     args = parser.parse_args()
     main(args)
