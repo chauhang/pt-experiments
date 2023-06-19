@@ -110,18 +110,12 @@ The entire model and the tokenizer is saved to the `alpaca-lora-so-df-7B` direct
 
 ### Upload model to huggingface
 
-Use the following code snippet
+Use the [push_to_hub.py](../../utils/push_to_hub.py) to push the model into huggingface
 
 ```
-from transformers import LlamaForCausalLM
-
-model = LlamaForCausalLM.from_pretrained("hf_ckpt")
-api_key = "" ### Insert your HF key here
-
-model.push_to_hub(repo_id="<user-name>/alpaca-lora-so-df-7B", private=True, use_auth_token=api_key)
+export HUGGINGFACE_KEY="" #Insert your HF api key here
+python push_to_hub.py --local_model_path ./alpaca-lora-so-df-7B --hf_model_name <user-name>/alpaca-lora-so-df-7B
 ```
-
-Check this [tutorial](https://huggingface.co/docs/transformers/model_sharing) for more details
 
 
 ### Inference
