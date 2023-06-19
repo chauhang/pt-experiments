@@ -1,3 +1,4 @@
+# The code is adapted from - https://github.com/tloen/alpaca-lora/blob/main/export_hf_checkpoint.py
 import argparse
 
 import torch

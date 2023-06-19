@@ -67,8 +67,6 @@ Once the required packages are installed using
 pip install -r requirements.txt
 ```
 
-Run the following command to finetune the model
-
 Move to alpaca-lora
 
 ```
@@ -77,8 +75,22 @@ cd alpaca-lora
 
 and run the following command to start the training
 
-```
-torchrun --nnodes 1 --nproc_per_node 4 --rdzv_endpoint 127.0.0.1 --rdzv_id 12345 --rdzv_backend c10d finetune.py --base_model 'decapoda-research/llama-7b-hf' --data_path 'so_discuss_alpaca_format.json' --output_dir './alpaca-lora-so-df-7B' --batch_size 4 --micro_batch_size 1 --num_epochs 5 --cutoff_len 512 --val_set_size 0
+```bash
+torchrun --nnodes 1 \
+  --nproc_per_node 4 \
+  --rdzv_endpoint 127.0.0.1 \
+  --rdzv_id 12345 \
+  --rdzv_backend c10d \
+  finetune.py \
+  --base_model 'decapoda-research/llama-7b-hf' \
+  --data_path 'so_discuss_alpaca_format.json' \
+  --output_dir './alpaca-lora-so-df-7B' \
+  --batch_size 4 \
+  --micro_batch_size 1 \
+  --num_epochs 5 \
+  --cutoff_len 512 \
+  --val_set_size 0
+
 ```
 
 Once the training is finished, the delta is saved in the outputdir (alpaca-lora-so-df-7B)
@@ -86,40 +98,15 @@ Once the training is finished, the delta is saved in the outputdir (alpaca-lora-
 
 ### Generate full model
 
-Once the training process is completed only the adapter files are saved. To generate the full model use the alpaca lora [export_hf_checkpoint](https://github.com/tloen/alpaca-lora/blob/main/export_hf_checkpoint.py) script
+Once the training process is completed only the adapter files are saved under (./alpaca-lora-so-df-7B) directory . 
+
+Use the [export_hf_checkpoint.py](../../utils/export_hf_checkpoint.py) to generate the hf checkpoint
 
 ```
-export BASE_MODEL=decapoda-research/llama-7b-hf 
+python export_hf_checkpoint.py --base_model decapoda-research/llama-7b-hf --lora_weights ./alpaca-lora-so-df-7B/ --output_model_name alpaca-lora-so-df-7B
 ```
 
-Open the file and replace the delta path from
-```
-lora_model = PeftModel.from_pretrained(
-    base_model,
-    "tloen/alpaca-lora-7b",
-    device_map={"": "cpu"},
-    torch_dtype=torch.float16,
-)
-```
-
-with 
-```
-lora_model = PeftModel.from_pretrained(
-    base_model,
-    "alpaca-lora-so-df-7B",
-    device_map={"": "cpu"},
-    torch_dtype=torch.float16,
-)
-```
-
-
-And run the command to export the model
-
-```
-python export_hf_checkpoint.py
-```
-
-The full model is generated in the current directory. 
+The entire model and the tokenizer is saved to the `alpaca-lora-so-df-7B` directory
 
 ### Upload model to huggingface
 

@@ -2,6 +2,8 @@
 
 `export_hf_checkpoint.py` can be used for saving the entire model in huggingface format.
 
+The script is adapted from - https://github.com/tloen/alpaca-lora/blob/main/export_hf_checkpoint.py
+
 To save the model and tokenizer, following inputs are needed
 
 1. Base model (--base_model) - HF model name of the base model used for training
