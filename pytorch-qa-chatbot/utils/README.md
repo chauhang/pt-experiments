@@ -15,3 +15,26 @@ python export_hf_checkpoint.py --base_model decapoda-research/llama-7b-hf --lora
 ```
 
 The huggingface model and the tokenizer files are saved under `alpaca-7b-test`
+
+
+### Pushing model to huggingface hub
+
+`push_to_hub.py` can be used to push the local hf model into HugingfaceHub.
+
+Set the api key as environment variable
+
+```
+export HUGGINGFACE_KEY="" #Insert your HF api key here
+```
+
+Run the following command
+
+```
+python push_to_hub.py --local_model_path <local-model-path> --hf_model_name <hf-model-name>
+```
+
+For ex:
+
+```
+python push_to_hub.py --local_model_path /home/ubunu/alpaca-7b-test --hf_model_name shrinath-suresh/alpaca-7b-test
+```
