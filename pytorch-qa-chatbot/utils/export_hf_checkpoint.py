@@ -1,8 +1,6 @@
-import os
 import argparse
 
 import torch
-import transformers
 from peft import PeftModel
 from transformers import LlamaForCausalLM, LlamaTokenizer  # noqa: F402
 
