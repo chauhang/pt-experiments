@@ -8,7 +8,7 @@ import gradio as gr
 import huggingface_hub as hf_hub
 import torch
 from langchain import PromptTemplate, LLMChain
-from langchain.embeddings.huggingface import HuggingFaceEmbeddings
+from langchain.embeddings.huggingface import HuggingFaceInstructEmbeddings
 from langchain.llms.base import LLM
 from langchain.vectorstores.faiss import FAISS
 from transformers import LlamaForCausalLM
@@ -90,7 +90,7 @@ def parse_response(text):
 def run_query(prompt_type, llm_chain, question, index_path, memory):
 
     if prompt_type == "question_with_context":
-        embeddings = HuggingFaceEmbeddings()
+        embeddings = HuggingFaceInstructEmbeddings(model_name="hkunlp/instructor-xl")
         if not os.path.exists(index_path):
             raise ValueError(f"Index path - {index_path} does not exists")
         faiss_index = FAISS.load_local(index_path, embeddings)

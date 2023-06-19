@@ -9,7 +9,7 @@ import gradio as gr
 import huggingface_hub as hf_hub
 import torch
 from langchain import PromptTemplate, LLMChain
-from langchain.embeddings.huggingface import HuggingFaceEmbeddings
+from langchain.embeddings.huggingface import HuggingFaceInstructEmbeddings
 from langchain.llms.base import LLM
 from langchain.vectorstores.faiss import FAISS
 from transformers import LlamaForCausalLM
@@ -24,28 +24,11 @@ from typing import Iterable
 from pygments import highlight
 from pygments.lexers import PythonLexer
 from pygments.formatters import TerminalFormatter
+from torchserve_endpoint import TorchServeEndpoint
 
 import grpc
-import inference_pb2
-import inference_pb2_grpc
-import management_pb2
-import management_pb2_grpc
 
-GRPC_URL="localhost:7070"
-responses = None
-
-def get_inference_stub():
-    channel = grpc.insecure_channel(GRPC_URL)
-    stub = inference_pb2_grpc.InferenceAPIsServiceStub(channel)
-    return stub
-
-def infer_stream(stub, model_name, model_input):
-    input_data = {"data": bytes(model_input, 'utf-8')}
-
-    responses = stub.StreamPredictions(
-        inference_pb2.PredictionsRequest(model_name=model_name, input=input_data)
-    )
-    return responses
+llm = None
 
 def read_prompt_from_path(prompt_path="prompts.json"):
     with open(prompt_path) as fp:
@@ -53,23 +36,9 @@ def read_prompt_from_path(prompt_path="prompts.json"):
     return prompt_dict
 
 def setup(model_name, prompt_type, prompt_template):
+    global llm
+    llm = TorchServeEndpoint(host="localhost", port="7070",model_name=model_name)
 
-    class CustomLLM(LLM):
-        def _call(self, prompt, stop=None) -> str:
-            global responses
-
-            responses = infer_stream(get_inference_stub(), model_name, prompt)
-            return ""
-
-        @property
-        def _identifying_params(self):
-            return {"name_of_model": model_name}
-
-        @property
-        def _llm_type(self) -> str:
-            return "custom"
-
-    llm = CustomLLM()
     memory = ConversationBufferWindowMemory(k=3, memory_key="chat_history", input_key="question")
     if prompt_type == "question_with_context":
         prompt = PromptTemplate(
@@ -82,12 +51,9 @@ def setup(model_name, prompt_type, prompt_template):
     llm_chain = LLMChain(prompt=prompt, llm=llm, memory=memory, output_key="result")
     return llm_chain, memory
 
-
-
-
 def run_query(prompt_type, llm_chain, question, index_path, memory):
     if prompt_type == "question_with_context":
-        embeddings = HuggingFaceEmbeddings()
+        embeddings = HuggingFaceInstructEmbeddings(model_name="hkunlp/instructor-xl")
         if not os.path.exists(index_path):
             raise ValueError(f"Index path - {index_path} does not exists")
         faiss_index = FAISS.load_local(index_path, embeddings)
@@ -142,22 +108,20 @@ def launch_gradio_interface(prompt_type, llm_chain, index_path, memory):
         return gr.update(value="", interactive=False), history + [[user_message, None]]
 
     def bot(history):
-        global responses
         print("Sending Query!", history[-1][0])
         run_query(prompt_type, llm_chain, history[-1][0], index_path, memory)
         history[-1][1] = ""
         try:
             flag = False
             foo = ""
-            for resp in responses:
+            for resp in llm.response:
                 prediction = resp.prediction.decode("utf-8")
                 foo += prediction
-                print(prediction, flush=True, end="")
                 if "### Response:" in foo:
                     flag = True
                     foo = ""
                     continue 
-                if flag:  
+                if flag:
                     history[-1][1] += prediction
                     time.sleep(0.05)
                     yield history

@@ -8,49 +8,13 @@ from langchain.memory import ConversationBufferWindowMemory
 from typing import Iterable
 from gradio.themes.base import Base
 from gradio.themes.utils import colors, fonts, sizes
-import time
+from torchserve_endpoint import TorchServeEndpoint
 
 import grpc
-import inference_pb2
-import inference_pb2_grpc
-import management_pb2
-import management_pb2_grpc
 
-GRPC_URL="localhost:7070"
 MODEL_NAME = "vicuna-13b"
-responses = None
 
-def get_inference_stub():
-    channel = grpc.insecure_channel("")
-    stub = inference_pb2_grpc.InferenceAPIsServiceStub(channel)
-    return stub
-
-def infer_stream(stub, model_name, model_input):
-    global responses
-    input_data = {"data": bytes(model_input, 'utf-8')}
-
-    responses = stub.StreamPredictions(
-        inference_pb2.PredictionsRequest(model_name=model_name, input=input_data)
-    )
-    return responses
-
-class CustomLLM(LLM):
-    model_name = "custom_model"
-
-    def _call(self, prompt, stop=None) -> str:        
-        infer_stream(get_inference_stub(), MODEL_NAME, prompt)
-        return ""
-
-    @property
-    def _identifying_params(self):
-        return {"name_of_model": self.model_name}
-
-    @property
-    def _llm_type(self) -> str:
-        return "custom"
-
-
-llm = CustomLLM()
+llm = TorchServeEndpoint(host="localhost", port="7070",model_name=MODEL_NAME)
 
 memory = ConversationBufferWindowMemory(k=3, memory_key="chat_history")
 
@@ -62,7 +26,6 @@ llm_chain = LLMChain(prompt=prompt, llm=llm, memory=memory, output_key="result")
 
 
 def run_query(question):
-    global responses
     llm_chain.run(question)
 
 class Seafoam(Base):
@@ -110,13 +73,12 @@ def launch_gradio_interface():
         return gr.update(value="", interactive=False), history + [[user_message, None]]
 
     def bot(history):
-        global responses
         print("Sending Query!", history[-1][0])
         run_query(history[-1][0])
         history[-1][1] = ""
         try:
             flag = False
-            for resp in responses:
+            for resp in llm.response:
                 prediction = resp.prediction.decode("utf-8")
                 print(prediction, flush=True, end="")
                 if "### Response:" in prediction:

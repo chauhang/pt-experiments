@@ -27,6 +27,7 @@ class ModelHandler(BaseHandler, ABC):
     def initialize(self, ctx):
         self.manifest = ctx.manifest
         properties = ctx.system_properties
+        self.context = ctx
         model_dir = properties.get("model_dir")
 
         if torch.cuda.is_available():
@@ -44,46 +45,75 @@ class ModelHandler(BaseHandler, ABC):
         dtypes = {"fp32": torch.float32, "fp16": torch.float16, "bf16": torch.bfloat16}
 
         dtype = dtypes.get(dtype_str, torch.float32)
-        
+
         self.model = LlamaForCausalLM.from_pretrained(
             model_path, 
-            use_cache=False, 
+            use_cache=False,
+            load_in_8bit=ctx.model_yaml_config["handler"]["load_in_8bit"],
             max_memory={i: ctx.model_yaml_config["handler"]["max_gpu_memory"] for i in range(ctx.model_yaml_config["handler"]["num_gpus"])},
             low_cpu_mem_usage=ctx.model_yaml_config["handler"]["low_cpu_mem_usage"],
             device_map=ctx.model_yaml_config["handler"]["device_map"],
             torch_dtype=dtype
         )
-        
+
         self.tokenizer = LlamaTokenizer.from_pretrained(model_path, use_fast=False, return_tensors="pt")
         self.streamer = TextIteratorStreamer(self.tokenizer)
 
         self.max_length = ctx.model_yaml_config["handler"]["max_length"]
         self.max_new_tokens = ctx.model_yaml_config["handler"]["max_new_tokens"]
+        self.top_p = ctx.model_yaml_config["handler"]["top_p"]
+        self.top_k = ctx.model_yaml_config["handler"]["top_k"]
 
         logger.info("Transformer model from path %s loaded successfully", model_dir)
 
         self.initialized = True
 
-    def handle(self, data, context):
-        for idx, data in enumerate(data):
+    def preprocess(self, requests):
+        """Basic text preprocessing, based on the user's chocie of application mode.
+        Args:
+            requests (str): The Input data in the form of text is passed on to the preprocess
+            function.
+        Returns:
+            list : The preprocess function returns a list of Tensor for the size of the word tokens.
+        """
+        for idx, data in enumerate(requests):
             input_text = data.get("data")
             if input_text is None:
                 input_text = data.get("body")
             if isinstance(input_text, (bytes, bytearray)):
                 input_text = input_text.decode("utf-8")
 
-        logger.info("Received text: %s", input_text)
+            logger.info("Received text: %s", input_text)
 
-        inputs = self.tokenizer(
-            [input_text],
-            max_length=self.max_length,
-            return_tensors="pt",
-        )
+            inputs = self.tokenizer(
+                [input_text],
+                max_length=self.max_length,
+                return_tensors="pt",
+            )
+        return inputs
+
+    def inference(self, inputs):
+        """Predict the class (or classes) of the received text using the
+        serialized transformers checkpoint.
+        Args:
+            input_batch (list): List of Text Tensors from the pre-process function is passed here
+        Returns:
+            list : It returns a list of the predicted value for the input text
+        """
         inputs = inputs.to(self.device)
-        generation_kwargs = dict(inputs, streamer=self.streamer, do_sample=True, max_new_tokens=self.max_new_tokens)
+        generation_kwargs = dict(inputs, streamer=self.streamer, do_sample=True, top_p=self.top_p, top_k=self.top_k, max_new_tokens=self.max_new_tokens)
         thread = Thread(target=self.model.generate, kwargs=generation_kwargs)
         thread.start()
 
         for new_text in self.streamer:
-            send_intermediate_predict_response([new_text], context.request_ids, "Intermediate Prediction success", 200, context)
+            send_intermediate_predict_response([new_text], self.context.request_ids, "Intermediate Prediction success", 200, self.context)
         return ["</s><s>"]
+
+    def postprocess(self, inference_output):
+        """Post Process Function converts the predicted response into Torchserve readable format.
+        Args:
+            inference_output (list): It contains the predicted response of the input text.
+        Returns:
+            (list): Returns a list of the Predictions and Explanations.
+        """
+        return inference_output
