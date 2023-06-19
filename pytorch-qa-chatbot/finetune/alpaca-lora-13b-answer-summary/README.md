@@ -1,6 +1,6 @@
 ### Introduction
 
-In this experiment, alpaca-7b model is instruction tuned with Stack Overflow dataset
+In this experiment, alpaca-13b model is instruction tuned with Stack Overflow dataset
 
 ### Data curation
 
@@ -18,7 +18,7 @@ Run the following command
 python alpaca_data_prep.py --stack_overflow_dataset_path stack_overflow.json
 ```
 
-Dataset is created in alpaca format with file with name `pytorch_so_answer_summary_alpaca_format.json`
+Dataset is created in alpaca format with file with name `pytorch_so_answer_summary_alpaca_format_cleaned.json`
 
 Upload the dataset to huggingface. check this [tutorial](https://huggingface.co/docs/datasets/v1.16.0/upload_dataset.html) for more info.
 
@@ -37,17 +37,17 @@ Example:
 Instruction
 
 ```
-how do i save a trained model in pytorch?
+extracting the top-k value-indices from a 1-d tensor Given a 1-D tensor in Torch (torch.Tensor), containing values which can be compared (say floating point), how can we extract the indices of the top-k values in that tensor? Apart from the brute-force method, I am looking for some API call, that Torch/lua provides, which can perform this task efficiently.
 ``` 
 
 Input
 ```
-Answer: Use the recommended approach for saving a PyTorch model which involves serialization and restoration of the model parameters. This can be done by calling torch.save() to save the_model.state_dict() and then calling the_model.load_state_dict(torch.load(path)) to load it later. Alternatively, the entire model can be saved and loaded using torch.save(the_model, path) and torch.load(path) respectively. However, this approach is more likely to break when used in different projects or after refactors due to the serialized data being bound to the specific classes and directory structure used. For more information, refer to the save and load the model section from the official PyTorch tutorials.
+as of pull request #496 torch now includes a built-in api named torch.topk. example: &gt; t = torch.tensor{9, 1, 8, 2, 7, 3, 6, 4, 5} -- obtain the 3 smallest elements &gt; res = t:topk(3) &gt; print(res) 1 2 3 [torch.doubletensor of size 3] -- you can also get the indices in addition &gt; res, ind = t:topk(3) &gt; print(ind) 2 4 6 [torch.longtensor of size 3] -- alternatively you can obtain the k largest elements as follow -- (see the api documentation for more details) &gt; res = t:topk(3, true) &gt; print(res) 9 8 7 [torch.doubletensor of size 3] at the time of writing the cpu implementation follows a sort and narrow approach (there are plans to improve it in the future). that being said an optimized gpu implementation for cutorch is currently being reviewed.
 ```
 
 Output
 ```
-found this page on their github repo:\n\nrecommended approach for saving a model\nthere are two main approaches for serializing and restoring a model.\nthe first (recommended) saves and loads only the model parameters:\ntorch.save(the_model.state_dict(), path)\n\nthen later:\nthe_model = themodelclass(*args, **kwargs)\nthe_model.load_state_dict(torch.load(path))\n\nthe second saves and loads the entire model:\ntorch.save(the_model, path)\n\nthen later:\nthe_model = torch.load(path)\n\nhowever in this case, the serialized data is bound to the specific classes and the exact directory structure used, so it can break in various ways when used in other projects, or after some serious refactors.\n\n\nsee also: save and load the model section from the official pytorch tutorials.\n
+using the built-in API call torch.topk to efficiently extract the top-k value indices from a 1-D tensor. The would provide an example code snippet showcasing how to use the API call to obtain the k largest or smallest elements along with their indices. The would also mention that while the current CPU implementation follows a sort and narrow approach, an optimized GPU implementation for cutorch is under review.
 ```
 
 ### Prompt Template
@@ -82,7 +82,7 @@ cd alpaca-lora
 and run the following command to start the training
 
 ```
-torchrun --nnodes 1 --nproc_per_node 4 --rdzv_endpoint 127.0.0.1 --rdzv_id 12345 --rdzv_backend c10d finetune.py --base_model 'decapoda-research/llama-7b-hf' --data_path 'pytorch_so_answer_summary_alpaca_format.json' --output_dir './alpaca-lora-7B-answer-summary' --batch_size 4 --micro_batch_size 1 --num_epochs 5 --cutoff_len 1024 --val_set_size 0
+torchrun --nnodes 1 --nproc_per_node 4 --rdzv_endpoint 127.0.0.1 --rdzv_id 12345 --rdzv_backend c10d finetune.py --base_model 'decapoda-research/llama-13b-hf' --data_path 'pytorch_so_answer_summary_alpaca_format_cleaned.json' --output_dir './alpaca-lora-13B-answer-summary' --batch_size 1 --micro_batch_size 1 --num_epochs 3 --cutoff_len 2048 --val_set_size 0
 ```
 
 Once the training is finished, the delta is saved in the outputdir (alpaca-lora-so-df-7B)
@@ -110,7 +110,7 @@ with
 ```
 lora_model = PeftModel.from_pretrained(
     base_model,
-    "alpaca-lora-7B-answer-summary",
+    "alpaca-lora-13B-answer-summary",
     device_map={"": "cpu"},
     torch_dtype=torch.float16,
 )
@@ -135,7 +135,7 @@ from transformers import LlamaForCausalLM
 model = LlamaForCausalLM.from_pretrained("hf_ckpt")
 api_key = "" ### Insert your HF key here
 
-model.push_to_hub(repo_id="<user-name>/alpaca-lora-7B-answer-summary", private=True, use_auth_token=api_key)
+model.push_to_hub(repo_id="<user-name>/alpaca-lora-13B-answer-summary", private=True, use_auth_token=api_key)
 ```
 
 Check this [tutorial](https://huggingface.co/docs/transformers/model_sharing) for more details
@@ -146,7 +146,7 @@ Check this [tutorial](https://huggingface.co/docs/transformers/model_sharing) fo
 To run the basic inference, use the [generate](https://github.com/tloen/alpaca-lora/blob/main/generate.py) script from alpaca lora
 
 ```
-python generate.py --base_model decapoda-research/llama-7b-hf --lora_weights <user-name>/alpaca-lora-7B-answer-summary --share_gradio True
+python generate.py --base_model decapoda-research/llama-13b-hf --lora_weights <user-name>/alpaca-lora-13B-answer-summary --share_gradio True
 ```
 
 Copy the public URL from the terminal and open it in browser and test the inference.
