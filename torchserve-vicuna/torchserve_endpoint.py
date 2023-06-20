@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Mapping, Optional
 from pydantic import Extra, root_validator
 from langchain.llms.base import LLM
-from langchain.callbacks.manager import CallbackManagerForLLMRun
+from langchain.callbacks.manager import CallbackManagerForLLMRun, AsyncCallbackManagerForLLMRun
 
 VALID_PROTOCOLS = ("gRPC")
 
@@ -16,6 +16,8 @@ class TorchServeEndpoint(LLM):
     model_kwargs: Optional[dict] = None
     """Streaming"""
     streaming: bool = True
+    """Verbose"""
+    verbose: bool = False
     """Response Object"""
     response: str = ""
     """Client Object"""
@@ -49,12 +51,25 @@ class TorchServeEndpoint(LLM):
 
     def _call(self, prompt, run_manager: Optional[CallbackManagerForLLMRun] = None, stop=None, **kwargs: Any) -> str:
         if self.streaming:
+            combined_text_output = ""
             self.response = self._infer_stream(self.client, prompt)
-            # TODO: Add new tokens to iterator
-            # for resp in self.response:
-            #     prediction = resp.prediction.decode("utf-8")
-            #     print(prediction, flush=True, end="")
-        return ""
+            for resp in self.response:
+                prediction = resp.prediction.decode("utf-8")
+                if run_manager:
+                    run_manager.on_llm_new_token(token=prediction, verbose=self.verbose)
+                combined_text_output += prediction
+            return combined_text_output
+
+    async def _acall(self, prompt, run_manager: Optional[AsyncCallbackManagerForLLMRun] = None, stop=None, **kwargs: Any) -> str:
+        if self.streaming:
+            combined_text_output = ""
+            self.response = self._infer_stream(self.client, prompt)
+            for resp in self.response:
+                prediction = resp.prediction.decode("utf-8")
+                if run_manager:
+                    await run_manager.on_llm_new_token(token=prediction, verbose=self.verbose)
+                combined_text_output += prediction
+            return combined_text_output
 
     @property
     def _identifying_params(self):

@@ -4,31 +4,27 @@ import json
 import os
 import re
 import time
+import asyncio
 
+from typing import Any
 import gradio as gr
-import huggingface_hub as hf_hub
-import torch
 from langchain import PromptTemplate, LLMChain
 from langchain.embeddings.huggingface import HuggingFaceInstructEmbeddings
-from langchain.llms.base import LLM
 from langchain.vectorstores.faiss import FAISS
-from transformers import LlamaForCausalLM
-from transformers import LlamaTokenizer
-from transformers import TextStreamer
 from langchain.memory import ConversationBufferWindowMemory
 from typing import Iterable
 from gradio.themes.base import Base
 from gradio.themes.utils import colors, fonts, sizes
 import time
 from typing import Iterable
-from pygments import highlight
-from pygments.lexers import PythonLexer
-from pygments.formatters import TerminalFormatter
 from torchserve_endpoint import TorchServeEndpoint
+from langchain.callbacks.base import AsyncCallbackHandler, BaseCallbackHandler
+from langchain.callbacks import AsyncIteratorCallbackHandler
+# import logging
 
-import grpc
+# logging.basicConfig(filename="logfile.log", level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-llm = None
+callback_handler = AsyncIteratorCallbackHandler()
 
 def read_prompt_from_path(prompt_path="prompts.json"):
     with open(prompt_path) as fp:
@@ -37,7 +33,7 @@ def read_prompt_from_path(prompt_path="prompts.json"):
 
 def setup(model_name, prompt_type, prompt_template):
     global llm
-    llm = TorchServeEndpoint(host="localhost", port="7070",model_name=model_name)
+    llm = TorchServeEndpoint(host="localhost", port="7070",model_name=model_name, verbose=True)
 
     memory = ConversationBufferWindowMemory(k=3, memory_key="chat_history", input_key="question")
     if prompt_type == "question_with_context":
@@ -51,16 +47,19 @@ def setup(model_name, prompt_type, prompt_template):
     llm_chain = LLMChain(prompt=prompt, llm=llm, memory=memory, output_key="result")
     return llm_chain, memory
 
-def run_query(prompt_type, llm_chain, question, index_path, memory):
+def load_index(index_path):
+    embeddings = HuggingFaceInstructEmbeddings(model_name="hkunlp/instructor-xl")
+    if not os.path.exists(index_path):
+        raise ValueError(f"Index path - {index_path} does not exists")
+    faiss_index = FAISS.load_local(index_path, embeddings)
+    return faiss_index
+
+async def run_query(prompt_type, llm_chain, question, index, memory):
     if prompt_type == "question_with_context":
-        embeddings = HuggingFaceInstructEmbeddings(model_name="hkunlp/instructor-xl")
-        if not os.path.exists(index_path):
-            raise ValueError(f"Index path - {index_path} does not exists")
-        faiss_index = FAISS.load_local(index_path, embeddings)
-        context = faiss_index.similarity_search(question, k=2)
-        result = llm_chain.run({"question": question, "context": context})
+        context = index.similarity_search(question, k=2)
+        await llm_chain.arun({"question": question, "context": context}, callbacks=[callback_handler])
     else:
-        result = llm_chain.run(question)
+        await llm_chain.arun(question)
     memory.clear()
 
 class Seafoam(Base):
@@ -94,7 +93,7 @@ class Seafoam(Base):
             font_mono=font_mono,
         )
 
-def launch_gradio_interface(prompt_type, llm_chain, index_path, memory):
+def launch_gradio_interface(prompt_type, llm_chain, index, memory):
     CSS ="""
     .contain { display: flex; flex-direction: column; }
     #component-0 { height: 100%; }
@@ -107,27 +106,23 @@ def launch_gradio_interface(prompt_type, llm_chain, index_path, memory):
     def user(user_message, history):
         return gr.update(value="", interactive=False), history + [[user_message, None]]
 
-    def bot(history):
+    async def bot(history):
         print("Sending Query!", history[-1][0])
-        run_query(prompt_type, llm_chain, history[-1][0], index_path, memory)
+        run = asyncio.create_task(run_query(prompt_type, llm_chain, history[-1][0], index, memory))
         history[-1][1] = ""
-        try:
-            flag = False
-            foo = ""
-            for resp in llm.response:
-                prediction = resp.prediction.decode("utf-8")
-                foo += prediction
-                if "### Response:" in foo:
-                    flag = True
-                    foo = ""
-                    continue 
-                if flag:
-                    history[-1][1] += prediction
-                    time.sleep(0.05)
-                    yield history
-            flag = False
-        except grpc.RpcError as e:
-            exit(1)
+        foo = ""
+        isResponse = False
+        async for token in callback_handler.aiter():
+            foo += token
+            if "### Response:" in foo:
+                history[-1][1] += foo.split("### Response:\n ")[1]
+                isResponse = True
+                foo = ""
+                continue
+            if isResponse:
+                history[-1][1] += token
+                yield history
+        await run        
 
     with gr.Blocks(css=CSS, theme=seafoam) as demo:
         chatbot = gr.Chatbot(label="PyTorch Bot", show_label=True, elem_id="chatbot")
@@ -164,10 +159,11 @@ def main(args):
         prompt_type=args.prompt_type,
         prompt_template=prompt_template,
     )
+    index = load_index(args.index_path)
     #result = run_query(prompt_type=args.prompt_type, llm_chain=llm_chain, index_path=args.index_path, question="How to save the model", memory=memory)
-
+    
     launch_gradio_interface(
-        prompt_type=args.prompt_type, llm_chain=llm_chain, index_path=args.index_path, memory=memory
+        prompt_type=args.prompt_type, llm_chain=llm_chain, index=index, memory=memory
     )
 
 
