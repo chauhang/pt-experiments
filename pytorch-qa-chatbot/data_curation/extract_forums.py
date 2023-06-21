@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 import argparse
 from bs4 import BeautifulSoup as BSHTML
-from requests.models import JSONDecodeError
+from simplejson import JSONDecodeError
 
 global host
 host = "https://discuss.pytorch.org"
@@ -48,7 +48,7 @@ def fetch_page(page):
 
 
 def extract_top_post_links(folder_path, source_name, total_pages):
-    total_pages = 1236
+    # total_pages = 1236
 
     solved_post_list = []
 
@@ -62,14 +62,14 @@ def extract_top_post_links(folder_path, source_name, total_pages):
         print(f"creating folder {output_folder}")
         os.makedirs(output_folder)
 
-    print("saving data as csv in {output_folder} as {source_name}.csv")
+    print("saving data as csv in {output_folder} as {source_name}_post.csv")
     df = pd.concat(solved_post_list, ignore_index=True)
-    df.to_csv(f"{output_folder}/{source_name}.csv", index=False)
+    df.to_csv(f"{output_folder}/{source_name}_post.csv", index=False)
 
 
 def get_forum(folder_path, source_name):
 
-    df = pd.read_csv("discuss_solved_id.csv")
+    df = pd.read_csv(f"{folder_path}/{source_name}/{source_name}_post.csv")
     data = []
     with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
         futures = [executor.submit(process_row, row) for _, row in df.iterrows()]
@@ -78,11 +78,11 @@ def get_forum(folder_path, source_name):
             if result is not None:
                 data.append(result)
 
-    print(f"saving data into {folder_path} as {source_name}.json")
-    with open(f"{folder_path}/{source_name}.json", "w") as f:
+    print(f"saving data into {folder_path}/{source_name} as {source_name}.json")
+    with open(f"{folder_path}/{source_name}/{source_name}.json", "w") as f:
         json.dump(data, f)
 
-    pickle.dump(data, open(f"{folder_path}/{source_name}.pkl", "wb"))
+    pickle.dump(data, open(f"{folder_path}/{source_name}/{source_name}.pkl", "wb"))
 
 
 if __name__ == "__main__":
