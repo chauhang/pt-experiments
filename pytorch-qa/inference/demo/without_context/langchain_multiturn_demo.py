@@ -68,10 +68,26 @@ def setup(model_name, model, prompt_template, max_tokens):
 
 
 def parse_response(text):
+    return_msg = ""
     if "### Response:" in text:
-        text = text.split("### Response:")[-1]
-        text = text.split("###")[0]
-        return text
+        response_text = text.split("### Response:")[-1]
+        response_text = response_text.split("###")[0]
+        return_msg += response_text
+
+        if "### Example" in text:
+            example_text = text.split("### Example")[-1]
+            example_text = example_text.split("###")[0]
+            example_text = "```python " + example_text + "```"
+            return_msg += example_text
+
+        if "### Code" in text:
+            example_text = text.split("### Code")[-1]
+            example_text = example_text.split("###")[0]
+            example_text = "```python " + example_text + "```"
+            return_msg += example_text
+
+        return return_msg
+
     else:
         return text
 
