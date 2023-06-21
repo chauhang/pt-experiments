@@ -79,7 +79,6 @@ def parse_response(text):
 def run_query(llm_chain, question, memory):
     result = llm_chain.run(question)
     print(memory.chat_memory.messages[1].content)
-    memory.clear()
     parsed_response = parse_response(result)
     return parsed_response
 
