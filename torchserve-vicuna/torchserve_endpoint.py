@@ -50,15 +50,8 @@ class TorchServeEndpoint(LLM):
         return response
 
     def _call(self, prompt, run_manager: Optional[CallbackManagerForLLMRun] = None, stop=None, **kwargs: Any) -> str:
-        if self.streaming:
-            combined_text_output = ""
-            self.response = self._infer_stream(self.client, prompt)
-            for resp in self.response:
-                prediction = resp.prediction.decode("utf-8")
-                if run_manager:
-                    run_manager.on_llm_new_token(token=prediction, verbose=self.verbose)
-                combined_text_output += prediction
-            return combined_text_output
+        self.response = self._infer_stream(self.client, prompt)
+        return ""
 
     async def _acall(self, prompt, run_manager: Optional[AsyncCallbackManagerForLLMRun] = None, stop=None, **kwargs: Any) -> str:
         if self.streaming:
