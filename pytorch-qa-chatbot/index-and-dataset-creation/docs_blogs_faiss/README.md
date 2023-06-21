@@ -12,6 +12,8 @@ Before generating the index, the dataset needs to be prepared
 2. Once `blogs.json` and `docs.json` are available, use the [hf-dataset](hf_dataset_preparation_blogs_docs.py)
 script to create a huggingface dataset. 
 
+### Generate HF Dataset
+
 ```bash
 python hf_dataset_preparation_blogs_docs.py 
 ```
