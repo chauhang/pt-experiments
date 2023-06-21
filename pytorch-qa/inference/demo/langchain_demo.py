@@ -2,10 +2,13 @@ import argparse
 import json
 import os
 import time
+from typing import Iterable
 
 import gradio as gr
 import huggingface_hub as hf_hub
 import torch
+from gradio.themes.base import Base
+from gradio.themes.utils import colors, fonts, sizes
 from langchain import PromptTemplate, LLMChain
 from langchain.llms.base import LLM
 from langchain.memory import ConversationBufferWindowMemory
@@ -81,33 +84,78 @@ def run_query(llm_chain, question, memory):
     return parsed_response
 
 
+class Seafoam(Base):
+    def __init__(
+        self,
+        *,
+        primary_hue: colors.Color | str = colors.emerald,
+        secondary_hue: colors.Color | str = colors.blue,
+        neutral_hue: colors.Color | str = colors.gray,
+        spacing_size: sizes.Size | str = sizes.spacing_md,
+        radius_size: sizes.Size | str = sizes.radius_md,
+        text_size: sizes.Size | str = sizes.text_lg,
+        font: fonts.Font
+        | str
+        | Iterable[fonts.Font | str] = (
+            fonts.GoogleFont("Quicksand"),
+            "ui-sans-serif",
+            "sans-serif",
+        ),
+        font_mono: fonts.Font
+        | str
+        | Iterable[fonts.Font | str] = (
+            fonts.GoogleFont("IBM Plex Mono"),
+            "ui-monospace",
+            "monospace",
+        ),
+    ):
+        super().__init__(
+            primary_hue=primary_hue,
+            secondary_hue=secondary_hue,
+            neutral_hue=neutral_hue,
+            spacing_size=spacing_size,
+            radius_size=radius_size,
+            text_size=text_size,
+            font=font,
+            font_mono=font_mono,
+        )
+
+
 def launch_gradio_interface(llm_chain, memory):
     CSS = """
     .contain { display: flex; flex-direction: column; }
     #component-0 { height: 100%; }
     #chatbot { flex-grow: 1; }
+    #text_box.gradio-container { background-color: transparent; }
+    #send_button { background-color: #6ee7b7; margin-top: 2.5%}
     """
+
+    seafoam = Seafoam()
 
     def user(user_message, history):
         return gr.update(value="", interactive=False), history + [[user_message, None]]
 
-    def bot(history):
-        print("Sending Query!")
-        bot_message = run_query(question=history[-1][0], llm_chain=llm_chain, memory=memory)
-        print(">>>>>>>>>>>>>>>>>>>>>>>>> Query: ", history[-1][0])
-        print(">>>>>>>>>>>>>>>>>>>>>>>> Answer: ", bot_message)
+    async def bot(history):
+        print("Sending Query!", history[-1][0])
+        bot_message = run_query(llm_chain=llm_chain, question=history[-1][0], memory=memory)
         history[-1][1] = ""
         for character in bot_message:
             history[-1][1] += character
             time.sleep(0.05)
             yield history
 
-    with gr.Blocks(css=CSS, theme=gr.themes.Glass()) as demo:
+    with gr.Blocks(css=CSS, theme=seafoam) as demo:
         chatbot = gr.Chatbot(label="PyTorch Bot", show_label=True, elem_id="chatbot")
-        msg = gr.Textbox(label="Enter Text", show_label=True)
-        with gr.Row():
-            generate = gr.Button("Generate")
-            clear = gr.Button("Clear")
+        with gr.Row().style(equal_height=True):
+            with gr.Column(scale=8):
+                msg = gr.Textbox(show_label=False, elem_id="text_box")
+            with gr.Column(scale=1):
+                generate = gr.Button(value="Send", elem_id="send_button")
+        clear = gr.Button("Clear")
+
+        res = msg.submit(user, [msg, chatbot], [msg, chatbot], queue=False).then(
+            bot, chatbot, chatbot
+        )
 
         res = generate.click(user, [msg, chatbot], [msg, chatbot], queue=False).then(
             bot, chatbot, chatbot
@@ -117,7 +165,7 @@ def launch_gradio_interface(llm_chain, memory):
         clear.click(lambda: None, None, chatbot, queue=False)
 
     demo.queue().launch(
-        server_name="0.0.0.0", ssl_verify=False, debug=True, show_error=True, share=True
+        server_name="0.0.0.0", ssl_verify=False, debug=True, share=True, show_error=True
     )
 
 
