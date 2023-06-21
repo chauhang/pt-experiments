@@ -2,8 +2,11 @@ import argparse
 import json
 import os
 import time
+from typing import Iterable
 
 import gradio as gr
+from gradio.themes.base import Base
+from gradio.themes.utils import colors, fonts, sizes
 import huggingface_hub as hf_hub
 import torch
 from langchain import PromptTemplate, LLMChain
@@ -29,6 +32,14 @@ def load_model(model_name):
         device_map="auto",
     )
     return model
+
+
+def load_index(index_path):
+    if not os.path.exists(index_path):
+        raise ValueError(f"Index path - {index_path} does not exists")
+    embeddings = HuggingFaceEmbeddings()
+    faiss_index = FAISS.load_local(index_path, embeddings)
+    return faiss_index
 
 
 def read_prompt_from_path(prompt_path):
@@ -69,20 +80,32 @@ def setup(model_name, model, prompt_template, max_tokens):
 
 
 def parse_response(text):
+    return_msg = ""
     if "### Response:" in text:
-        text = text.split("### Response:")[-1]
-        text = text.split("###")[0]
-        return text
+        response_text = text.split("### Response:")[-1]
+        response_text = response_text.split("###")[0]
+        return_msg += response_text
+
+        if "### Example" in text:
+            example_text = text.split("### Example")[-1]
+            example_text = example_text.split("###")[0]
+            example_text = "```python " + example_text + "```"
+            return_msg += example_text
+
+        if "### Code" in text:
+            example_text = text.split("### Code")[-1]
+            example_text = example_text.split("###")[0]
+            example_text = "```python " + example_text + "```"
+            return_msg += example_text
+
+        return return_msg
+
     else:
         return text
 
 
-def run_query(llm_chain, question, index_path, memory):
-    embeddings = HuggingFaceEmbeddings()
-    if not os.path.exists(index_path):
-        raise ValueError(f"Index path - {index_path} does not exists")
-    faiss_index = FAISS.load_local(index_path, embeddings)
-    context = faiss_index.similarity_search(question, k=2)
+def run_query(llm_chain, question, index, memory):
+    context = index.similarity_search(question, k=2)
     result = llm_chain.run({"question": question, "context": context})
     print(memory.chat_memory.messages[1].content)
     memory.clear()
@@ -90,38 +113,80 @@ def run_query(llm_chain, question, index_path, memory):
     return parsed_response
 
 
-def launch_gradio_interface(llm_chain, index_path, memory):
+class Seafoam(Base):
+    def __init__(
+        self,
+        *,
+        primary_hue: colors.Color | str = colors.emerald,
+        secondary_hue: colors.Color | str = colors.blue,
+        neutral_hue: colors.Color | str = colors.gray,
+        spacing_size: sizes.Size | str = sizes.spacing_md,
+        radius_size: sizes.Size | str = sizes.radius_md,
+        text_size: sizes.Size | str = sizes.text_lg,
+        font: fonts.Font
+        | str
+        | Iterable[fonts.Font | str] = (
+            fonts.GoogleFont("Quicksand"),
+            "ui-sans-serif",
+            "sans-serif",
+        ),
+        font_mono: fonts.Font
+        | str
+        | Iterable[fonts.Font | str] = (
+            fonts.GoogleFont("IBM Plex Mono"),
+            "ui-monospace",
+            "monospace",
+        ),
+    ):
+        super().__init__(
+            primary_hue=primary_hue,
+            secondary_hue=secondary_hue,
+            neutral_hue=neutral_hue,
+            spacing_size=spacing_size,
+            radius_size=radius_size,
+            text_size=text_size,
+            font=font,
+            font_mono=font_mono,
+        )
+
+
+def launch_gradio_interface(llm_chain, memory, index):
     CSS = """
     .contain { display: flex; flex-direction: column; }
     #component-0 { height: 100%; }
     #chatbot { flex-grow: 1; }
+    #text_box.gradio-container { background-color: transparent; }
+    #send_button { background-color: #6ee7b7; margin-top: 2.5%}
     """
+
+    seafoam = Seafoam()
 
     def user(user_message, history):
         return gr.update(value="", interactive=False), history + [[user_message, None]]
 
-    def bot(history):
-        print("Sending Query!")
+    async def bot(history):
+        print("Sending Query!", history[-1][0])
         bot_message = run_query(
-            question=history[-1][0],
-            llm_chain=llm_chain,
-            index_path=index_path,
-            memory=memory
+            llm_chain=llm_chain, question=history[-1][0], memory=memory, index=index
         )
-        print(">>>>>>>>>>>>>>>>>>>>>>>>> Query: ", history[-1][0])
-        print(">>>>>>>>>>>>>>>>>>>>>>>> Answer: ", bot_message)
         history[-1][1] = ""
         for character in bot_message:
             history[-1][1] += character
             time.sleep(0.05)
             yield history
 
-    with gr.Blocks(css=CSS, theme=gr.themes.Glass()) as demo:
+    with gr.Blocks(css=CSS, theme=seafoam) as demo:
         chatbot = gr.Chatbot(label="PyTorch Bot", show_label=True, elem_id="chatbot")
-        msg = gr.Textbox(label="Enter Text", show_label=True)
-        with gr.Row():
-            generate = gr.Button("Generate")
-            clear = gr.Button("Clear")
+        with gr.Row().style(equal_height=True):
+            with gr.Column(scale=8):
+                msg = gr.Textbox(show_label=False, elem_id="text_box")
+            with gr.Column(scale=1):
+                generate = gr.Button(value="Send", elem_id="send_button")
+        clear = gr.Button("Clear")
+
+        res = msg.submit(user, [msg, chatbot], [msg, chatbot], queue=False).then(
+            bot, chatbot, chatbot
+        )
 
         res = generate.click(user, [msg, chatbot], [msg, chatbot], queue=False).then(
             bot, chatbot, chatbot
@@ -131,7 +196,7 @@ def launch_gradio_interface(llm_chain, index_path, memory):
         clear.click(lambda: None, None, chatbot, queue=False)
 
     demo.queue().launch(
-        server_name="0.0.0.0", ssl_verify=False, debug=True, show_error=True, share=True
+        server_name="0.0.0.0", ssl_verify=False, debug=True, share=True, show_error=True
     )
 
 
@@ -147,13 +212,13 @@ def main(args):
         model_name=args.model_name,
         model=model,
         prompt_template=prompt_template,
-        max_tokens=args.max_tokens
+        max_tokens=args.max_tokens,
     )
     # result = run_query(llm_chain=llm_chain, index_path=args.index_path, question="How to save the model", memory=memory)
 
-    launch_gradio_interface(
-        llm_chain=llm_chain, index_path=args.index_path, memory=memory
-    )
+    index = load_index(index_path=args.index_path)
+
+    launch_gradio_interface(llm_chain=llm_chain, index=index, memory=memory)
 
 
 if __name__ == "__main__":
@@ -161,11 +226,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model_name", type=str, default="shrinath-suresh/alpaca-lora-7b-answer-summary"
     )
-    parser.add_argument(
-        "--max_tokens", type=int, default=128
-    )
+    parser.add_argument("--max_tokens", type=int, default=128)
     parser.add_argument("--prompt_path", type=str, default="question_with_context_prompts.json")
-    parser.add_argument("--prompt_name", type=str, default="QUESTION_WITH_CONTEXT_PROMPT_ADVANCED_PROMPT")
+    parser.add_argument(
+        "--prompt_name", type=str, default="QUESTION_WITH_CONTEXT_PROMPT_ADVANCED_PROMPT"
+    )
     parser.add_argument("--index_path", type=str, default="docs_blogs_faiss_index")
 
     args = parser.parse_args()
