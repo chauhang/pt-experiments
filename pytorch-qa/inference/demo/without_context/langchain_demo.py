@@ -160,6 +160,10 @@ def launch_gradio_interface(llm_chain, memory):
             time.sleep(0.05)
             yield history
 
+    def mem_clear():
+        print("Clearning memory")
+        memory.clear()
+
     with gr.Blocks(css=CSS, theme=seafoam) as demo:
         chatbot = gr.Chatbot(label="PyTorch Bot", show_label=True, elem_id="chatbot")
         with gr.Row().style(equal_height=True):
@@ -178,7 +182,7 @@ def launch_gradio_interface(llm_chain, memory):
         )
 
         res.then(lambda: gr.update(interactive=True), None, [msg], queue=False)
-        clear.click(lambda: None, None, chatbot, queue=False)
+        clear.click(mem_clear, None, chatbot, queue=False)
 
     demo.queue().launch(
         server_name="0.0.0.0", ssl_verify=False, debug=True, share=True, show_error=True
