@@ -149,7 +149,7 @@ def launch_gradio_interface(llm_chain, memory):
     seafoam = Seafoam()
 
     def user(user_message, history):
-        return gr.update(value="", interactive=False), history + [[user_message, None]]
+        return gr.update(value="", interactive=True), history + [[user_message, None]]
 
     async def bot(history):
         print("Sending Query!", history[-1][0])
