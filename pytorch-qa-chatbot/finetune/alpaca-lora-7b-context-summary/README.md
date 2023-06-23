@@ -1,6 +1,6 @@
 ### Introduction
 
-In this experiment, alpaca-7b model is instruction tuned with Stack Overflow dataset
+In this experiment, alpaca-7b model is instruction tuned with the summarized version of the Stack Overflow dataset
 
 ### Data curation
 
@@ -15,7 +15,7 @@ To prepare the dataset in the alpaca format run the script from [data_preparatio
 Run the following command
 
 ```
-python alpaca_data_prep.py --stack_overflow_dataset_path stack_overflow.json
+python alpaca_data_prep.py --stack_overflow_dataset_path pt_question_answers.csv
 ```
 
 Dataset is created in alpaca format with file with name `pytorch_so_context_summary_alpaca_format.json`
@@ -24,9 +24,13 @@ Upload the dataset to huggingface. check this [tutorial](https://huggingface.co/
 
 ### Dataset Format
 
-For this test only the question and context are considered.
+For this test, the question, context and answers are used.
 
-From the stack overflow and discussion forum posts, the title of the post is used as question(instruction) and accepted answer is used as answer(output).
+From the stack overflow and discussion forum posts, 
+
+1. The title of the post is used as question(instruction) 
+2. The top two nearest answer summarized is used as context(input).
+3. The accepted answer is used as answer(output)
 
 Example:
 
@@ -77,65 +81,47 @@ cd alpaca-lora
 
 and run the following command to start the training
 
-```
-torchrun --nnodes 1 --nproc_per_node 4 --rdzv_endpoint 127.0.0.1 --rdzv_id 12345 --rdzv_backend c10d finetune.py --base_model 'decapoda-research/llama-7b-hf' --data_path 'pytorch_so_context_summary_alpaca_format.json' --output_dir './alpaca-lora-7B-context-summary' --batch_size 4 --micro_batch_size 1 --num_epochs 5 --cutoff_len 1024 --val_set_size 0
+```bash
+torchrun \
+  --nnodes 1 \
+  --nproc_per_node 4 \
+  --rdzv_endpoint 127.0.0.1 \
+  --rdzv_id 12345 \
+  --rdzv_backend c10d \
+  finetune.py \
+  --base_model 'decapoda-research/llama-7b-hf' \
+  --data_path 'pytorch_so_context_summary_alpaca_format.json' \
+  --output_dir './alpaca-lora-7B-context-summary-delta' \
+  --batch_size 4 \
+  --micro_batch_size 1 \
+  --num_epochs 5 \
+  --cutoff_len 1024 \
+  --val_set_size 0
 ```
 
-Once the training is finished, the delta is saved in the outputdir (alpaca-lora-so-df-7B)
+Once the training is finished, the delta is saved in the outputdir (alpaca-lora-7B-context-summary-delta)
 
 
 ### Generate full model
 
-Once the training process is completed only the adapter files are saved. To generate the full model use the alpaca lora [export_hf_checkpoint](https://github.com/tloen/alpaca-lora/blob/main/export_hf_checkpoint.py) script
+Once the training process is completed only the adapter files are saved under (./alpaca-lora-7B-context-summary-delta) directory . 
+
+Use the [export_hf_checkpoint.py](../../utils/export_hf_checkpoint.py) to generate the hf checkpoint
 
 ```
-export BASE_MODEL=decapoda-research/llama-7b-hf 
+python export_hf_checkpoint.py --base_model decapoda-research/llama-7b-hf --lora_weights ./alpaca-lora-7b-context-summary-delta/ --output_model_name alpaca-lora-7b-context-summary
 ```
 
-Open the file and replace the delta path from
-```
-lora_model = PeftModel.from_pretrained(
-    base_model,
-    "tloen/alpaca-lora-7b",
-    device_map={"": "cpu"},
-    torch_dtype=torch.float16,
-)
-```
-
-with 
-```
-lora_model = PeftModel.from_pretrained(
-    base_model,
-    "alpaca-lora-7B-context-summary",
-    device_map={"": "cpu"},
-    torch_dtype=torch.float16,
-)
-```
-
-
-And run the command to export the model
-
-```
-python export_hf_checkpoint.py
-```
-
-The full model is generated in the current directory. 
+The entire model and the tokenizer is saved to the `alpaca-lora-7b-context-summary` directory
 
 ### Upload model to huggingface
 
-Use the following code snippet
+Use the [push_to_hub.py](../../utils/push_to_hub.py) to push the model into huggingface
 
 ```
-from transformers import LlamaForCausalLM
-
-model = LlamaForCausalLM.from_pretrained("hf_ckpt")
-api_key = "" ### Insert your HF key here
-
-model.push_to_hub(repo_id="<user-name>/alpaca-lora-7B-context-summary", private=True, use_auth_token=api_key)
+export HUGGINGFACE_KEY="" #Insert your HF api key here
+python push_to_hub.py --local_model_path ./alpaca-lora-7b-context-summary --hf_model_name <user-name>/alpaca-lora-7b-context-summary
 ```
-
-Check this [tutorial](https://huggingface.co/docs/transformers/model_sharing) for more details
-
 
 ### Inference
 

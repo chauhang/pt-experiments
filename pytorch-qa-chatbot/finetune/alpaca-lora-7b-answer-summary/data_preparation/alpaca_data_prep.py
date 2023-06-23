@@ -6,6 +6,7 @@ import pandas as pd
 from tqdm import tqdm
 import concurrent.futures
 import requests
+import os
 import openai
 
 
@@ -25,10 +26,10 @@ def get_url(df):
 
 
 def load_and_clean_data(dataset_path):
-    df = pd.read_json(dataset_path)
-    df["question"] = df["question"].apply(lambda x: cleanhtml(x))
+    df = pd.read_csv(dataset_path)
     df["pt_answer"] = df["pt_answer"].apply(lambda x: cleanhtml(x))
     df["question"] = df["pt_title"].str.lower() + "\n" + df["pt_body"]
+    df["question"] = df["question"].apply(lambda x: cleanhtml(x))
     df["answer"] = df["pt_answer"].str.lower()
     df = get_url(df)
     df = df[["question", "answer", "source"]]
@@ -38,7 +39,11 @@ def load_and_clean_data(dataset_path):
 def summarize_answer(df):
     """using openai summarize answer"""
 
-    api_key = ""
+    if not os.environ["OPENAI_API_KEY"]:
+        raise EnvironmentError(
+            "OPENAI_API_KEY - key missing. set in the environment before running the script"
+        )
+    api_key = os.environ["OPENAI_API_KEY"]
 
     def get_qa_openai(context, index):
         try:
@@ -105,11 +110,16 @@ def generate_data_in_alpaca_format(df, max_length=2048, output_file_path="final_
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--stack_overflow_dataset_path", type=str, default="stack_overflow.json")
+    parser.add_argument(
+        "--stack_overflow_dataset_path",
+        type=str,
+        default="../../../data_curation/data_sources/pt_question_answers_updated.csv",
+    )
+
     args = parser.parse_args()
     so_df = load_and_clean_data(args.stack_overflow_dataset_path)
     print("SO Dataset: ", so_df.shape)
-
+    #     so_df = so_df[:5000] ##using only 5k datapoints
     df = summarize_answer(so_df)
 
     generate_data_in_alpaca_format(

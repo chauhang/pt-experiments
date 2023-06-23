@@ -15,7 +15,7 @@ To prepare the dataset in the alpaca format run the script from [data_preparatio
 Run the following command
 
 ```
-python alpaca_data_prep.py --stack_overflow_dataset_path stack_overflow.json
+python alpaca_data_prep.py --stack_overflow_dataset_path pt_question_answers.csv
 ```
 
 Dataset is created in alpaca format with file with name `pytorch_so_answer_summary_alpaca_format.json`
@@ -29,25 +29,25 @@ For this test, the question, context and answers are used.
 From the stack overflow and discussion forum posts, 
 
 1. The title and the question body of the post is used as question(instruction) 
-2. The accepted answer is used as answer(input).
-3. The summarized version of the answer is used as context (input)
+2. The accepted answer is used as context(input).
+3. The summarized version of the answer is used as output(output)
 
 Example:
 
 Instruction
 
 ```
-how do i save a trained model in pytorch?
+extracting the top-k value-indices from a 1-d tensor Given a 1-D tensor in Torch (torch.Tensor), containing values which can be compared (say floating point), how can we extract the indices of the top-k values in that tensor? Apart from the brute-force method, I am looking for some API call, that Torch/lua provides, which can perform this task efficiently.
 ``` 
 
 Input
 ```
-Answer: Use the recommended approach for saving a PyTorch model which involves serialization and restoration of the model parameters. This can be done by calling torch.save() to save the_model.state_dict() and then calling the_model.load_state_dict(torch.load(path)) to load it later. Alternatively, the entire model can be saved and loaded using torch.save(the_model, path) and torch.load(path) respectively. However, this approach is more likely to break when used in different projects or after refactors due to the serialized data being bound to the specific classes and directory structure used. For more information, refer to the save and load the model section from the official PyTorch tutorials.
+as of pull request #496 torch now includes a built-in api named torch.topk. example: &gt; t = torch.tensor{9, 1, 8, 2, 7, 3, 6, 4, 5} -- obtain the 3 smallest elements &gt; res = t:topk(3) &gt; print(res) 1 2 3 [torch.doubletensor of size 3] -- you can also get the indices in addition &gt; res, ind = t:topk(3) &gt; print(ind) 2 4 6 [torch.longtensor of size 3] -- alternatively you can obtain the k largest elements as follow -- (see the api documentation for more details) &gt; res = t:topk(3, true) &gt; print(res) 9 8 7 [torch.doubletensor of size 3] at the time of writing the cpu implementation follows a sort and narrow approach (there are plans to improve it in the future). that being said an optimized gpu implementation for cutorch is currently being reviewed.
 ```
 
 Output
 ```
-found this page on their github repo:\n\nrecommended approach for saving a model\nthere are two main approaches for serializing and restoring a model.\nthe first (recommended) saves and loads only the model parameters:\ntorch.save(the_model.state_dict(), path)\n\nthen later:\nthe_model = themodelclass(*args, **kwargs)\nthe_model.load_state_dict(torch.load(path))\n\nthe second saves and loads the entire model:\ntorch.save(the_model, path)\n\nthen later:\nthe_model = torch.load(path)\n\nhowever in this case, the serialized data is bound to the specific classes and the exact directory structure used, so it can break in various ways when used in other projects, or after some serious refactors.\n\n\nsee also: save and load the model section from the official pytorch tutorials.\n
+An expert PyTorch engineer would suggest using the built-in API call torch.topk to efficiently extract the top-k value indices from a 1-D tensor. The engineer would provide an example code snippet showcasing how to use the API call to obtain the k largest or smallest elements along with their indices. The engineer would also mention that while the current CPU implementation follows a sort and narrow approach, an optimized GPU implementation for cutorch is under review.
 ```
 
 ### Prompt Template
@@ -91,7 +91,7 @@ torchrun \
   finetune.py \
   --base_model 'decapoda-research/llama-7b-hf' \
   --data_path 'pytorch_so_answer_summary_alpaca_format.json' \
-  --output_dir './alpaca-lora-7B-answer-summary' \
+  --output_dir './alpaca-lora-7B-answer-summary-delta' \
   --batch_size 4 \
   --micro_batch_size 1 \
   --num_epochs 5 \
@@ -99,17 +99,17 @@ torchrun \
   --val_set_size 0
 ```
 
-Once the training is finished, the delta is saved in the outputdir (alpaca-lora-so-df-7B)
+Once the training is finished, the delta is saved in the outputdir (alpaca-lora-7B-answer-summary-delta)
 
 
 ### Generate full model
 
-Once the training process is completed only the adapter files are saved under (./alpaca-lora-so-df-7B) directory . 
+Once the training process is completed only the adapter files are saved under (./alpaca-lora-7B-answer-summary-delta) directory . 
 
 Use the [export_hf_checkpoint.py](../../utils/export_hf_checkpoint.py) to generate the hf checkpoint
 
 ```
-python export_hf_checkpoint.py --base_model decapoda-research/llama-7b-hf --lora_weights ./alpaca-lora-7b-answer-summary/ --output_model_name alpaca-lora-7b-answer-summary
+python export_hf_checkpoint.py --base_model decapoda-research/llama-7b-hf --lora_weights ./alpaca-lora-7b-answer-summary-delta/ --output_model_name alpaca-lora-7b-answer-summary
 ```
 
 The entire model and the tokenizer is saved to the `alpaca-lora-7b-answer-summary` directory
