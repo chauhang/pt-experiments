@@ -59,14 +59,14 @@ The StackOverflow Posts archive is 18GB is size and when extracted, it generates
 To process the file large cpu memory is needed. 
 
 PyTorch question and answers are saved in the format of CSV file using the below notebook.
-https://github.com/chauhang/pt-experiments/blob/pytorch-qa/pytorch-qa/SO-Parser.ipynb
+[SO-Parser.ipynb](SO-Parser.ipynb)
 
 or
 
 Use the pre-created csv file `pt_question_answers.csv`
 
 ```
-python extract_so_posts_from_csv.py --folder_path 'knowledgebase' --source_name 'discussion_forum'
+python extract_so_posts_from_csv.py --folder_path 'knowledgebase' --source_name 'stack_overflow'
 ```
 
 
