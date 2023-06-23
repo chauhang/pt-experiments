@@ -2,7 +2,7 @@
 
 Data Sources
 
-1. Stack overflow dataset - "../../../data_curation/data_sources/pt_question_answers.csv"
+1. Stack overflow dataset - [pt_question_answers.csv](../../../data_curation/data_sources/pt_question_answers.csv)
 
 Download the datasets into the current directory from the above path
 
