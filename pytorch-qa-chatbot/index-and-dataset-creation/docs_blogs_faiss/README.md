@@ -23,6 +23,12 @@ To upload the dataset to huggingface, check this [tutorial](https://huggingface.
 
 ### Generate and save index
 
+Install instruct xl package
+
+```
+pip install InstructorEmbedding
+```
+
 To generate the index, run the following command
 
 ```

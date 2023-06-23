@@ -4,7 +4,7 @@ import os
 
 from chat_ui import launch_gradio_interface
 from create_chatbot import load_model, read_prompt_from_path, create_chat_bot
-from langchain.embeddings.huggingface import HuggingFaceEmbeddings
+from langchain.embeddings.huggingface import HuggingFaceInstructEmbeddings
 from langchain.vectorstores.faiss import FAISS
 
 logging.basicConfig(
@@ -17,7 +17,7 @@ logging.basicConfig(
 def load_index(index_path):
     if not os.path.exists(index_path):
         raise FileNotFoundError(f"Index path - {index_path} does not exists")
-    embeddings = HuggingFaceEmbeddings()
+    embeddings = HuggingFaceInstructEmbeddings(model_name="hkunlp/instructor-xl")
     faiss_index = FAISS.load_local(index_path, embeddings)
     return faiss_index
 

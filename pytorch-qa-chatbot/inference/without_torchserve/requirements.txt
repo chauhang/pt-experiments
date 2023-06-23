@@ -6,3 +6,4 @@ accelerate
 gradio
 faiss-gpu
 huggingface-hub
+InstructorEmbedding

@@ -1,7 +1,7 @@
 import argparse
 
 from langchain.document_loaders import HuggingFaceDatasetLoader
-from langchain.embeddings.huggingface import HuggingFaceEmbeddings
+from langchain.embeddings.huggingface import HuggingFaceInstructEmbeddings
 from langchain.vectorstores.faiss import FAISS
 
 
@@ -12,7 +12,7 @@ def load_dataset_as_pages(dataset_name):
 
 
 def create_index(pages):
-    embeddings = HuggingFaceEmbeddings()
+    embeddings = HuggingFaceInstructEmbeddings(model_name="hkunlp/instructor-xl")
 
     index = FAISS.from_documents([pages.pop(0)], embeddings)
     i, step = 0, 50
