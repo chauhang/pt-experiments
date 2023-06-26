@@ -1,0 +1,22 @@
+[
+    "How do I check if PyTorch is using the GPU?",
+    "Code to save the model?",
+    "What does .view() do?",
+    "Why do we need to call zero_grad()?",
+    "How do I print the model summary?",
+    "What is the purpose of PyTorch's grad_fn attribute in tensors?",
+    "What is fsdp and how to use it in code?",
+    "How train the model in multi-node",
+    "How to write a custom dataset",
+    "How should I use torch.compile properly??",
+    "Why do we pack the sequences?",
+    "Check the total number of parameters",
+    "RuntimeError: Input type (torch.FloatTensor) and weight type (torch.cuda.FloatTensor) should be the same",
+    "Connection between loss.backward() and optimizer.step()",
+    "How to improve model accuracy",
+    "How to improve the training speed",
+    "How to manage huge input tensor?",
+    "How to fix RuntimeError 'Expected object of scalar type Float but got scalar type Double for argument'?",
+    "how to do mixed precision training?",
+    "How to avoid CUDA out of memory?"
+]
