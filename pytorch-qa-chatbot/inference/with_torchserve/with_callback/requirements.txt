@@ -1,0 +1,8 @@
+torch >= 2.0.0
+transformers
+langchain
+sentencepiece
+accelerate
+gradio==3.35.2
+faiss-gpu
+huggingface-hub
