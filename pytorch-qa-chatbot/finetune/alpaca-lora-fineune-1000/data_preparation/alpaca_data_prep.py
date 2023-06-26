@@ -25,9 +25,9 @@ def load_and_clean_so_data(dataset_path):
     df["question"] = df["question"].apply(lambda x: cleanhtml(x))
     df["answer"] = df["pt_answer"].str.lower()
     df["pt_body"] = df["pt_body"].str.lower()
-    df['context'] = df['pt_body'] + df["answer"]
-    
-    df = df[['question', 'answer','context']]
+    df["context"] = df["pt_body"] + df["answer"]
+
+    df = df[["question", "answer", "context"]]
     df["source"] = "pt_stack_overflow"
 
     return df
@@ -99,10 +99,12 @@ def generate_data_in_alpaca_format(df, max_length=2048, output_file_path="final_
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--stack_overflow_dataset_path", type=str, default="pt_question_answers.csv")
+    parser.add_argument(
+        "--stack_overflow_dataset_path", type=str, default="pt_question_answers.csv"
+    )
     parser.add_argument(
         "--pt_discuss_dataset_path", type=str, default="discussion_forum_curated.json"
-    ) 
+    )
     parser.add_argument("--pt_tutorial_dataset_path", type=str, default="pt_tutorial.json")
     parser.add_argument("--pt_faq_dataset_path", type=str, default="pt_faq.json")
     parser.add_argument("--blogs_curated_dataset_path", type=str, default="blogs_curated_data.json")
@@ -118,9 +120,9 @@ if __name__ == "__main__":
     blogs_df = load_blogs_data(args.blogs_curated_dataset_path)
     print("Blogs Dataset: ", blogs_df.shape)
 
-    final_df = pd.concat(
-        [so_df, discuss_df,tutorial_df, faq_df, blogs_df]
-    ).reset_index()
+    final_df = pd.concat([so_df, discuss_df, tutorial_df, faq_df, blogs_df]).reset_index()
     print("Merged Dataset: ", final_df.shape)
 
-    generate_data_in_alpaca_format(df=final_df, output_file_path="pt_curated_1000_alpaca_format.json")
+    generate_data_in_alpaca_format(
+        df=final_df, output_file_path="pt_curated_1000_alpaca_format.json"
+    )

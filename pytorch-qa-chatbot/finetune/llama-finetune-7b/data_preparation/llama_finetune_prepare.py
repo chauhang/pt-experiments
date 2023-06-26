@@ -1,10 +1,11 @@
-import pandas as pd
+import argparse
 import json
 import re
+
 import markdown
+import pandas as pd
 from bs4 import BeautifulSoup
 from langchain.text_splitter import CharacterTextSplitter
-import argparse
 
 
 def split_pages(df, category, chunk_size=1024, chunk_overlap=50, separator="\n"):
@@ -49,13 +50,13 @@ def split_fields(doc):
     # remove heading * symbols
     pattern = r"\n\*+\n"
     text = re.sub(pattern, "", content)
-    
-    html_text = markdown.markdown(text, extensions=['markdown.extensions.extra'])
 
-    soup = BeautifulSoup(html_text, 'html.parser')
+    html_text = markdown.markdown(text, extensions=["markdown.extensions.extra"])
+
+    soup = BeautifulSoup(html_text, "html.parser")
     clean_text = soup.get_text()
-    clean_text = clean_text.replace('{: style="text-align: center;"}','')
-    
+    clean_text = clean_text.replace('{: style="text-align: center;"}', "")
+
     text = {
         "text": clean_text,
         "source": page_content_dict["metadata"]["source"],
@@ -83,7 +84,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     blog_pages = read_and_split_blogs(blog_dataset_path=args.pt_blogs_discuss_path)
     doc_pages = read_and_split_docs(docs_dataset_path=args.pt_docs_dataset_path)
-    
+
     generate_jsonl_file(
         output_file_name="blogs_docs_dataset.jsonl", blog_pages=blog_pages, doc_pages=doc_pages
     )

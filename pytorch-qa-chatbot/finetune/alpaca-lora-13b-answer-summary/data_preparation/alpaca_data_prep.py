@@ -1,13 +1,13 @@
 import argparse
+import concurrent.futures
 import json
+import os
 import re
 
-import pandas as pd
-from tqdm import tqdm
-import concurrent.futures
-import requests
-import os
 import openai
+import pandas as pd
+import requests
+from tqdm import tqdm
 
 
 def cleanhtml(raw_html):
@@ -110,12 +110,16 @@ def generate_data_in_alpaca_format(df, max_length=2048, output_file_path="final_
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--stack_overflow_dataset_path", type=str,                             default="../../../data_curation/data_sources/pt_question_answers_updated.csv")
-    
+    parser.add_argument(
+        "--stack_overflow_dataset_path",
+        type=str,
+        default="../../../data_curation/data_sources/pt_question_answers_updated.csv",
+    )
+
     args = parser.parse_args()
     so_df = load_and_clean_data(args.stack_overflow_dataset_path)
     print("SO Dataset: ", so_df.shape)
-#     so_df = so_df[:5000] ##using only 5k datapoints
+    #     so_df = so_df[:5000] ##using only 5k datapoints
     df = summarize_answer(so_df)
 
     generate_data_in_alpaca_format(

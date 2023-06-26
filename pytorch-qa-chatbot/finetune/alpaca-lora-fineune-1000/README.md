@@ -97,7 +97,7 @@ torchrun \
   --rdzv_id 12345 \
   --rdzv_backend c10d \
   finetune.py \
-  --base_model 'shrinath-suresh/llama-finetune-7b' \
+  --base_model '<user-name>/llama-finetune-7b' \
   --data_path 'pt_curated_1000_alpaca_format.json' \
   --output_dir './llama-finetune-pytorch-1000-delta' \
   --batch_size 1 \
@@ -117,7 +117,7 @@ Once the training process is completed only the adapter files are saved under (.
 Use the [export_hf_checkpoint.py](../../utils/export_hf_checkpoint.py) to generate the hf checkpoint
 
 ```
-python export_hf_checkpoint.py --base_model shrinath-suresh/llama-finetune-7b --lora_weights ./llama-finetune-pytorch-1000-delta/ --output_model_name llama-finetune-pytorch-1000
+python export_hf_checkpoint.py --base_model <user-name>/llama-finetune-7b --lora_weights ./llama-finetune-pytorch-1000-delta/ --output_model_name llama-finetune-pytorch-1000
 ```
 
 The entire model and the tokenizer is saved to the `llama-finetune-pytorch-1000` directory
@@ -136,7 +136,7 @@ python push_to_hub.py --local_model_path ./llama-finetune-pytorch-1000 --hf_mode
 To run the basic inference, use the [generate](https://github.com/tloen/alpaca-lora/blob/main/generate.py) script from alpaca lora
 
 ```
-python generate.py --base_model shrinath-suresh/llama-finetune-7b --lora_weights <user-name>/llama-finetune-pytorch-1000-delta --share_gradio True
+python generate.py --base_model <user-name>/llama-finetune-7b --lora_weights <user-name>/llama-finetune-pytorch-1000-delta --share_gradio True
 ```
 
 Copy the public URL from the terminal and open it in browser and test the inference.

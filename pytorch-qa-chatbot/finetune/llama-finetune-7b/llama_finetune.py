@@ -5,8 +5,7 @@ from typing import List
 import fire
 import torch
 import transformers
-import pandas as pd
-from datasets import load_dataset, Dataset
+from datasets import load_dataset
 
 """
 Unused imports:
@@ -22,8 +21,6 @@ from peft import (
     set_peft_model_state_dict,
 )
 from transformers import LlamaForCausalLM, LlamaTokenizer
-
-from utils.prompter import Prompter
 
 
 def train(
@@ -84,13 +81,11 @@ def train(
             f"resume_from_checkpoint: {resume_from_checkpoint or False}\n"
             f"prompt template: {prompt_template_name}\n"
         )
-    assert (
-        base_model
-    ), "Please specify a --base_model, e.g. --base_model='huggyllama/llama-7b'"
-    #gradient_accumulation_steps = batch_size // micro_batch_size
+    assert base_model, "Please specify a --base_model, e.g. --base_model='huggyllama/llama-7b'"
+    # gradient_accumulation_steps = batch_size // micro_batch_size
     gradient_accumulation_steps = 4
 
-    #prompter = Prompter(prompt_template_name)
+    # prompter = Prompter(prompt_template_name)
 
     device_map = "auto"
     world_size = int(os.environ.get("WORLD_SIZE", 1))
@@ -120,15 +115,13 @@ def train(
 
     tokenizer = LlamaTokenizer.from_pretrained(base_model)
 
-    tokenizer.pad_token_id = (
-        0  # unk. we want this to be different from the eos token
-    )
+    tokenizer.pad_token_id = 0  # unk. we want this to be different from the eos token
     tokenizer.padding_side = "left"  # Allow batched inference
 
     def tokenize(prompt, add_eos_token=True):
         # there's probably a way to do this with the tokenizer settings
         # but again, gotta move fast
-        
+
         result = tokenizer(
             prompt,
             truncation=True,
@@ -136,7 +129,7 @@ def train(
             padding=False,
             return_tensors=None,
         )
-        
+
         if (
             result["input_ids"][-1] != tokenizer.eos_token_id
             and len(result["input_ids"]) < cutoff_len
@@ -154,7 +147,7 @@ def train(
         source = data_point["source"]
         category = data_point["category"]
         full_prompt = f"### Text: {text} \n### source: {source} \n### category: {category}\n"
-       
+
         tokenized_full_prompt = tokenize(full_prompt)
 
         return tokenized_full_prompt
@@ -172,9 +165,9 @@ def train(
     model = get_peft_model(model, config)
 
     if data_path.endswith(".json") or data_path.endswith(".jsonl"):
-       data = load_dataset("json", data_files=data_path)
+        data = load_dataset("json", data_files=data_path)
     else:
-       data = load_dataset(data_path)
+        data = load_dataset(data_path)
 
     if resume_from_checkpoint:
         # Check the available weights and load them
@@ -185,9 +178,7 @@ def train(
             checkpoint_name = os.path.join(
                 resume_from_checkpoint, "adapter_model.bin"
             )  # only LoRA model - LoRA config above has to fit
-            resume_from_checkpoint = (
-                False  # So the trainer won't try loading its state
-            )
+            resume_from_checkpoint = False  # So the trainer won't try loading its state
         # The two files above have a different name depending on how they were saved, but are actually the same.
         if os.path.exists(checkpoint_name):
             print(f"Restarting from {checkpoint_name}")
@@ -196,18 +187,12 @@ def train(
         else:
             print(f"Checkpoint {checkpoint_name} not found")
 
-#     model.print_trainable_parameters()  # Be more transparent about the % of trainable params.
+    #     model.print_trainable_parameters()  # Be more transparent about the % of trainable params.
 
     if val_set_size > 0:
-        train_val = data["train"].train_test_split(
-            test_size=val_set_size, shuffle=True, seed=42
-        )
-        train_data = (
-            train_val["train"].shuffle().map(generate_and_tokenize_prompt)
-        )
-        val_data = (
-            train_val["test"].shuffle().map(generate_and_tokenize_prompt)
-        )
+        train_val = data["train"].train_test_split(test_size=val_set_size, shuffle=True, seed=42)
+        train_data = train_val["train"].shuffle().map(generate_and_tokenize_prompt)
+        val_data = train_val["test"].shuffle().map(generate_and_tokenize_prompt)
     else:
         train_data = data["train"].shuffle().map(generate_and_tokenize_prompt)
         val_data = None
@@ -224,10 +209,10 @@ def train(
         args=transformers.TrainingArguments(
             per_device_train_batch_size=micro_batch_size,
             gradient_accumulation_steps=gradient_accumulation_steps,
-            #warmup_steps=100,
+            # warmup_steps=100,
             num_train_epochs=num_epochs,
             learning_rate=1e-5,
-            #fp16=True,
+            # fp16=True,
             logging_steps=10,
             optim="adamw_torch",
             evaluation_strategy="steps" if val_set_size > 0 else "no",
@@ -250,9 +235,7 @@ def train(
 
     old_state_dict = model.state_dict
     model.state_dict = (
-        lambda self, *_, **__: get_peft_model_state_dict(
-            self, old_state_dict()
-        )
+        lambda self, *_, **__: get_peft_model_state_dict(self, old_state_dict())
     ).__get__(model, type(model))
 
     if torch.__version__ >= "2" and sys.platform != "win32":
@@ -263,9 +246,7 @@ def train(
     model.to("cpu")
     model.save_pretrained(output_dir)
 
-    print(
-        "\n If there's a warning about missing keys above, please disregard :)"
-    )
+    print("\n If there's a warning about missing keys above, please disregard :)")
 
 
 if __name__ == "__main__":

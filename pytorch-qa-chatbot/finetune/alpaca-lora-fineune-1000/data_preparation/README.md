@@ -8,7 +8,14 @@ Download the datasets into the current directory.
 
 To generate blogs curated data using OPENAI, download blogs.json from data curation step into the current directory.
 
-Files to be present - blogs.json, blogs_curated_data.json, discussion_forum_curated.json, pt_tutorial.json, pytorch_faq.json, pt_question_answers.csv
+Files to be present - 
+
+1. blogs.json
+2. blogs_curated_data.json
+3. discussion_forum_curated.json
+4. pt_tutorial.json
+5. pytorch_faq.json
+6. pt_question_answers.csv
 
 As we are using OPENAI to generate qa, please provide OPENAI API KEY in environment variable.
 ```
@@ -20,9 +27,7 @@ Run the following command
 python blogs_qa_generation.py
 ```
 
-To generate data in alpaca format.
-
-Run the following command
+To generate data in alpaca format, run the following command
 
 ```
 python alpaca_data_prep.py

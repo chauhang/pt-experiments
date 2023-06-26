@@ -1,7 +1,8 @@
-import pandas as pd
-import re
-import json
 import argparse
+import json
+import re
+
+import pandas as pd
 
 
 def read_dataset(path):
@@ -45,8 +46,12 @@ def create_hf_dataset(so_df, output_filename):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--stack_overflow_dataset_path", type=str,                             default="../../../data_curation/data_sources/pt_question_answers_updated.csv")
-    
+    parser.add_argument(
+        "--stack_overflow_dataset_path",
+        type=str,
+        default="../../../data_curation/data_sources/pt_question_answers_updated.csv",
+    )
+
     args = parser.parse_args()
     so_df = read_dataset(args.stack_overflow_dataset_path)
     so_df = get_url(so_df)
@@ -57,5 +62,3 @@ if __name__ == "__main__":
     )
     so_df = so_df[["instruction", "input", "output", "source"]]
     create_hf_dataset(so_df, output_filename="so_dataset_alpaca_format.jsonl")
-
-
