@@ -1,12 +1,19 @@
 ### Introduction
 
-In this experiment, alpaca-7b model is instruction tuned with Stack Overflow and Discussion Forum dataset
+In this experiment, alpaca-7b model is instruction tuned with hand curated dataset generated from PyTorch discussion forums, PyTorch tutorials, PyTorch FAQ and SO and Blogs dataset.  
 
 ### Data curation
 
 Before running the model data preparation step, ensure the data curation files are present in the system.
 
 Check the [data curation readme](../../data_curation/README.md) for more details
+
+We have hand curated dataset in following size from sources.
+1. 178 questions and answers from [discussion forums](https://discuss.pytorch.org/)
+2. 168 questions and answers from [tutorials](https://pytorch.org/tutorials/)
+3. 37 questions and answers from [faq](https://pytorch.org/docs/stable/notes/faq.html)
+4. 400 top questions and answers from SO
+5. 216 questions and answers from blogs generated using OPENAI
 
 ### Model data preparation
 
@@ -15,18 +22,21 @@ To prepare the dataset in the alpaca format run the script from [data_preparatio
 Run the following command
 
 ```
-python alpaca_data_prep.py --stack_overflow_dataset_path stack_overflow.json --pt_discuss_dataset_path discussion_forum.json
+python alpaca_data_prep.py --stack_overflow_dataset_path pt_question_answers.csv --pt_discuss_dataset_path discussion_forum_curated.json --pt_tutorial_dataset_path pt_tutorial.json --pt_faq_dataset_path pt_faq.json --blogs_curated_dataset_path blogs_curated_data.json
 ```
 
-Dataset is created in alpaca format with file with name `pt_curated_1000.json`
+Dataset is created in alpaca format with file with name `pt_curated_1000_alpaca_format.json`
 
 Upload the dataset to huggingface. check this [tutorial](https://huggingface.co/docs/datasets/v1.16.0/upload_dataset.html) for more info.
 
 ### Dataset Format
 
-For this test only the question and context are considered.
+For this test, the question, context and answers are used.
 
-From the stack overflow and discussion forum posts, the title of the post is used as question(instruction) and accepted answer is used as answer(output).
+1. The title of the post is used as question(instruction) 
+2. The post body/context is used as context(input).
+3. The hand curated answer is used as output(output)
+
 
 Example:
 
@@ -59,6 +69,8 @@ check the [repo](https://github.com/tloen/alpaca-lora/tree/main/templates) for m
 
 ### Model finetuning
 
+We will be using our own alpaca lora model as [base](../llama-finetune-7b) trained on llama-7b using pytorch dataset.
+
 Follow the environment setup instructions from the [alpaca-lora repo](https://github.com/tloen/alpaca-lora.git).
 
 Once the required packages are installed using 
@@ -77,72 +89,54 @@ cd alpaca-lora
 
 and run the following command to start the training
 
-```
-torchrun --nnodes 1 --nproc_per_node 4 --rdzv_endpoint 127.0.0.1 --rdzv_id 12345 --rdzv_backend c10d finetune.py --base_model 'decapoda-research/llama-7b-hf' --data_path 'pt_curated_1000.json' --output_dir './alpaca-lora-7B-curated-1000' --batch_size 4 --micro_batch_size 1 --num_epochs 5 --cutoff_len 512 --val_set_size 0
+```bash
+torchrun \
+  --nnodes 1 \
+  --nproc_per_node 4 \
+  --rdzv_endpoint 127.0.0.1 \
+  --rdzv_id 12345 \
+  --rdzv_backend c10d \
+  finetune.py \
+  --base_model 'shrinath-suresh/llama-finetune-7b' \
+  --data_path 'pt_curated_1000_alpaca_format.json' \
+  --output_dir './llama-finetune-pytorch-1000-delta' \
+  --batch_size 1 \
+  --micro_batch_size 1 \
+  --num_epochs 15 \
+  --cutoff_len 2048 \
+  --val_set_size 0
 ```
 
-Once the training is finished, the delta is saved in the outputdir (alpaca-lora-7B-curated-1000)
+Once the training is finished, the delta is saved in the outputdir (llama-finetune-pytorch-1000-delta)
 
 
 ### Generate full model
 
-Once the training process is completed only the adapter files are saved. To generate the full model use the alpaca lora [export_hf_checkpoint](https://github.com/tloen/alpaca-lora/blob/main/export_hf_checkpoint.py) script
+Once the training process is completed only the adapter files are saved under (./llama-finetune-pytorch-1000-delta) directory . 
+
+Use the [export_hf_checkpoint.py](../../utils/export_hf_checkpoint.py) to generate the hf checkpoint
 
 ```
-export BASE_MODEL=decapoda-research/llama-7b-hf 
+python export_hf_checkpoint.py --base_model shrinath-suresh/llama-finetune-7b --lora_weights ./llama-finetune-pytorch-1000-delta/ --output_model_name llama-finetune-pytorch-1000
 ```
 
-Open the file and replace the delta path from
-```
-lora_model = PeftModel.from_pretrained(
-    base_model,
-    "tloen/alpaca-lora-7b",
-    device_map={"": "cpu"},
-    torch_dtype=torch.float16,
-)
-```
-
-with 
-```
-lora_model = PeftModel.from_pretrained(
-    base_model,
-    "alpaca-lora-7B-curated-1000",
-    device_map={"": "cpu"},
-    torch_dtype=torch.float16,
-)
-```
-
-
-And run the command to export the model
-
-```
-python export_hf_checkpoint.py
-```
-
-The full model is generated in the current directory. 
+The entire model and the tokenizer is saved to the `llama-finetune-pytorch-1000` directory
 
 ### Upload model to huggingface
 
-Use the following code snippet
+Use the [push_to_hub.py](../../utils/push_to_hub.py) to push the model into huggingface
 
 ```
-from transformers import LlamaForCausalLM
-
-model = LlamaForCausalLM.from_pretrained("hf_ckpt")
-api_key = "" ### Insert your HF key here
-
-model.push_to_hub(repo_id="<user-name>/alpaca-lora-7B-curated-1000", private=True, use_auth_token=api_key)
+export HUGGINGFACE_KEY="" #Insert your HF api key here
+python push_to_hub.py --local_model_path ./llama-finetune-pytorch-1000 --hf_model_name <user-name>/llama-finetune-pytorch-1000
 ```
-
-Check this [tutorial](https://huggingface.co/docs/transformers/model_sharing) for more details
-
 
 ### Inference
 
 To run the basic inference, use the [generate](https://github.com/tloen/alpaca-lora/blob/main/generate.py) script from alpaca lora
 
 ```
-python generate.py --base_model decapoda-research/llama-7b-hf --lora_weights <user-name>/alpaca-lora-7B-curated-1000 --share_gradio True
+python generate.py --base_model shrinath-suresh/llama-finetune-7b --lora_weights <user-name>/llama-finetune-pytorch-1000-delta --share_gradio True
 ```
 
 Copy the public URL from the terminal and open it in browser and test the inference.

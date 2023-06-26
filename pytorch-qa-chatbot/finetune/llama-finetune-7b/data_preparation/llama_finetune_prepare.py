@@ -4,6 +4,7 @@ import re
 import markdown
 from bs4 import BeautifulSoup
 from langchain.text_splitter import CharacterTextSplitter
+import argparse
 
 
 def split_pages(df, category, chunk_size=1024, chunk_overlap=50, separator="\n"):
@@ -76,9 +77,13 @@ def generate_jsonl_file(output_file_name, blog_pages, doc_pages):
 
 
 if __name__ == "__main__":
-    blog_pages = read_and_split_blogs(blog_dataset_path="blogs.json")
-    doc_pages = read_and_split_docs(docs_dataset_path="docs.json")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--pt_docs_dataset_path", type=str, default="docs.json")
+    parser.add_argument("--pt_blogs_discuss_path", type=str, default="blogs.json")
+    args = parser.parse_args()
+    blog_pages = read_and_split_blogs(blog_dataset_path=args.pt_blogs_discuss_path)
+    doc_pages = read_and_split_docs(docs_dataset_path=args.pt_docs_dataset_path)
+    
     generate_jsonl_file(
-        output_file_name="blogs_splitted_dataset.jsonl", blog_pages=blog_pages, doc_pages=doc_pages
+        output_file_name="blogs_docs_dataset.jsonl", blog_pages=blog_pages, doc_pages=doc_pages
     )
-

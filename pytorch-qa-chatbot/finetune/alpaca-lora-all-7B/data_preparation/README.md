@@ -7,7 +7,7 @@ Data Sources
 3. Docs dataset - docs_qa_dataset.json
 4. Blogs Forum dataset - blogs_qa_dataset.json
 
-Download the datasets into the current directory
+Download the datasets into the current directory by following data curation steps.
 
 Run the following command
 

@@ -14,12 +14,11 @@ def cleanhtml(raw_html):
 
 def load_and_clean_data(dataset_path):
     df = pd.read_json(dataset_path)
-
     df[["question", "answer"]] = df["text"].apply(
-        lambda x: pd.Series(str(x).split("ANSWER: ", maxsplit=1))
+        lambda x: pd.Series(str(x).lower().split("answer: ", maxsplit=1))
     )
 
-    df["question"] = df["question"].str.lstrip("QUESTION:")
+    df["question"] = df["question"].str.lstrip("question:")
 
     df = df[["question", "answer"]]
 
