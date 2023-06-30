@@ -39,4 +39,4 @@ if __name__ == "__main__":
     )
     # result = run_query(llm_chain=llm_chain, question="How to save the model", memory=memory)
 
-    launch_gradio_interface(llm_chain=llm_chain, memory=memory, multiturn=args.multiturn)
+    launch_gradio_interface(chain=llm_chain, memory=memory, multiturn=args.multiturn)
