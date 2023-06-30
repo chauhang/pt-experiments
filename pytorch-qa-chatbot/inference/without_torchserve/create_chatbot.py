@@ -38,7 +38,12 @@ def read_prompt_from_path(prompt_path):
     return prompt_dict
 
 
-def create_chat_bot(model_name, model, prompt_template, max_tokens, index=None):
+def create_prompt_template(prompt_str, inputs):
+    prompt = PromptTemplate(template=prompt_str, input_variables=inputs)
+    return prompt
+
+
+def create_chat_bot(model_name, model, prompt, max_tokens, index=None, enable_memory=True):
 
     tokenizer = LlamaTokenizer.from_pretrained(model_name)
     streamer = TextStreamer(tokenizer, skip_prompt=True, Timeout=5)
@@ -60,15 +65,13 @@ def create_chat_bot(model_name, model, prompt_template, max_tokens, index=None):
             return "custom"
 
     llm = CustomLLM()
-    memory = ConversationBufferWindowMemory(k=3, memory_key="chat_history", input_key="question")
 
-    if index:
-        prompt = PromptTemplate(
-            template=prompt_template, input_variables=["chat_history", "question", "context"]
+    if enable_memory:
+        memory = ConversationBufferWindowMemory(
+            k=3, memory_key="chat_history", input_key="question"
         )
+        llm_chain = LLMChain(prompt=prompt, llm=llm, memory=memory, output_key="result")
+        return llm_chain, memory
     else:
-        prompt = PromptTemplate(
-            template=prompt_template, input_variables=["chat_history", "question"]
-        )
-    llm_chain = LLMChain(prompt=prompt, llm=llm, memory=memory, output_key="result")
-    return llm_chain, memory
+        llm_chain = LLMChain(prompt=prompt, llm=llm)
+        return llm_chain, llm
