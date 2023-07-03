@@ -2,11 +2,12 @@ import argparse
 import logging
 import os
 
-from chat_ui import launch_gradio_interface
+# from chat_ui import launch_gradio_interface
 from create_chatbot import read_prompt_from_path, create_chat_bot
 # from langchain.embeddings.huggingface import HuggingFaceEmbeddings
 from langchain.embeddings.huggingface import HuggingFaceInstructEmbeddings
 from langchain.vectorstores.faiss import FAISS
+
 
 logging.basicConfig(
     filename="pytorch-chatbot-with-index.log",
@@ -14,6 +15,9 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(message)s",
 )
 
+sys.path.append('../..')
+
+from ui.chat_ui import launch_gradio_interface
 
 def load_index(index_path):
     if not os.path.exists(index_path):

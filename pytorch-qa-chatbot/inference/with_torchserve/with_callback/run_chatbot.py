@@ -1,14 +1,20 @@
 import argparse
 import logging
 
-from chat_ui import launch_gradio_interface
 from create_chatbot import  read_prompt_from_path, create_chat_bot
+
+
 
 logging.basicConfig(
     filename="pytorch-chatbot.log",
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
 )
+
+
+sys.path.append('../..')
+
+from ui.chat_ui import launch_gradio_interface
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Langchain demo")
