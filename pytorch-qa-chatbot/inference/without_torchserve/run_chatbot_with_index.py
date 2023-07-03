@@ -3,7 +3,12 @@ import logging
 import os
 
 from chat_ui import launch_gradio_interface
-from create_chatbot import load_model, read_prompt_from_path, create_chat_bot
+from create_chatbot import (
+    load_model,
+    read_prompt_from_path,
+    create_chat_bot,
+    create_prompt_template,
+)
 from langchain.embeddings.huggingface import HuggingFaceInstructEmbeddings
 from langchain.vectorstores.faiss import FAISS
 
@@ -44,7 +49,12 @@ if __name__ == "__main__":
         raise KeyError(
             f"Invalid key - {args.prompt_name}. Accepted values are {prompt_dict.keys()}"
         )
-    prompt_template = prompt_dict[args.prompt_name]
+    prompt_str = prompt_dict[args.prompt_name]
+
+    prompt_template = create_prompt_template(
+        prompt_str=prompt_str, inputs=["chat_history", "question", "context"]
+    )
+
     llm_chain, memory = create_chat_bot(
         model_name=args.model_name,
         model=model,
