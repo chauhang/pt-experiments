@@ -12,7 +12,7 @@ Data Sources
 
 Create a new folder named `knowledgebase`
 
-```
+```bash
 mkdir knowledgebase
 ```
 
@@ -20,7 +20,7 @@ The script clones the pytorch blogs and extracts the blog contents.
 
 Run the following command to prepare the json file
 
-```
+```bash
 python extract_blogs.py --folder_path 'knowledgebase' --source_name 'blogs'
 ```
 
@@ -30,14 +30,20 @@ PyTorch docs are integrated with the Sphinx document scheme.
 
 Follow the instructions from [Build the documentation](https://github.com/pytorch/pytorch#building-the-documentation)
 
-Or
+:warning: If you run into this [issue](https://github.com/pytorch/pytorch/issues/104113) make the below changes.
+
+- Add `sphinx-design` to requirements.txt in `docs` folder
+- Modify `sphinx_panels` to `sphinx_design` in `extensions` list
+ of `docs/source/conf.py` file
+
+Or use the `text.zip` for pre-build pytorch docs
 
 Unzip the `text.zip` file for already built docs
 
 Once the `text` archive is extracted, run the following command 
 
 
-```
+```bash
 python extract_docs.py --folder_path 'knowledgebase' --source_path text --source_name 'docs'
 ```
 
@@ -45,7 +51,7 @@ python extract_docs.py --folder_path 'knowledgebase' --source_path text --source
 
 The following script extracts the links and posts of the top solved posts from PyTorch Discussion forum. The top solved posts are available in `discuss_solved_id.csv` file.
 
-```
+```bash
 python extract_forums.py --folder_path 'knowledgebase' --source_name 'discussion_forum'
 ```
 
@@ -65,7 +71,7 @@ or
 
 Use the pre-created csv file `pt_question_answers.csv`
 
-```
+```bash
 python extract_so_posts_from_csv.py --folder_path 'knowledgebase' --source_name 'stack_overflow'
 ```
 
@@ -89,7 +95,7 @@ python token_count.py --file_path 'knowledgebase/stack_overflow/stack_overflow.j
 
 the dataset will be created in the following structure
 
-```
+```bash
 $ tree
 .
 ├── blogs

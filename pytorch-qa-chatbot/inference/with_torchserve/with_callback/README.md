@@ -111,7 +111,7 @@ Copy the public url from terminal, paste it in browser and start testing
 To test multi turn qa with vicuna 13b model with index, run the following command
 
 ```bash
-python run_chatbot_with_index.py --model_name jagadeesh/vicuna-13b
+python run_chatbot_with_index.py --model_name vicuna-13b
 ```
 
 Copy the public url from terminal, paste it in browser and start testing
