@@ -50,9 +50,12 @@ def create_chat_bot(model_name, model, prompt, max_tokens, index=None, enable_me
 
     class CustomLLM(LLM):
         def _call(self, prompt, stop=None) -> str:
-            inputs = tokenizer([prompt], return_tensors="pt")
-
-            response = model.generate(**inputs, streamer=streamer, max_new_tokens=max_tokens)
+            inputs, params = prompt.split("||")
+            inputs = tokenizer([inputs], return_tensors="pt")
+            params_dict = json.loads(params)
+            for key, value in params_dict.items():
+                inputs[key] = value
+            response = model.generate(**inputs, streamer=streamer)
             response = tokenizer.decode(response[0])
             return response
 

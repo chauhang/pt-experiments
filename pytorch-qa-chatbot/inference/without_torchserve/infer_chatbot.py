@@ -29,18 +29,35 @@ def parse_response(text):
         return text
 
 
-def run_query(chain, question, memory, multiturn, index=None):
+def run_query(chain, question, memory, multiturn, top_p, top_k, max_new_tokens, index=None):
     if isinstance(chain, langchain.agents.agent.AgentExecutor):
-        result = chain(question)
+        result = chain(
+            {"question": question, "top_p": top_p, "top_k": top_k, "max_new_tokens": max_new_tokens}
+        )
         return result["intermediate_steps"][0][0].log.split("Final Answer: ")[-1]
     else:
         if index:
             context = index.similarity_search(question, k=2)
             logger.info(f"Fetched context: {context}")
-            result = chain.run({"question": question, "context": context})
+            result = chain.run(
+                {
+                    "question": question,
+                    "context": context,
+                    "top_p": top_p,
+                    "top_k": top_k,
+                    "max_new_tokens": max_new_tokens,
+                }
+            )
             memory.clear()
         else:
-            result = chain.run(question)
+            result = chain.run(
+                {
+                    "question": question,
+                    "top_p": top_p,
+                    "top_k": top_k,
+                    "max_new_tokens": max_new_tokens,
+                }
+            )
             if not multiturn:
                 memory.clear()
         parsed_response = parse_response(result)

@@ -1,7 +1,7 @@
 import argparse
 import logging
+import sys
 
-from chat_ui import launch_gradio_interface
 from create_chatbot import (
     load_model,
     read_prompt_from_path,
@@ -14,6 +14,10 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
 )
+
+sys.path.append("..")
+from ui.chat_ui import launch_gradio_interface
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Langchain demo")
@@ -38,7 +42,8 @@ if __name__ == "__main__":
     logging.info(f"Using Prompt: {prompt_str}")
 
     prompt_template = create_prompt_template(
-        prompt_str=prompt_str, inputs=["chat_history", "question"]
+        prompt_str=prompt_str,
+        inputs=["chat_history", "question", "top_p", "top_k", "max_new_tokens"],
     )
 
     llm_chain, memory = create_chat_bot(

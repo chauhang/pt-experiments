@@ -1,10 +1,13 @@
-from chat_ui import launch_gradio_interface
+import sys
 from create_chatbot import load_model, create_chat_bot
 from langchain import PromptTemplate
 from langchain.agents import AgentType
 from langchain.agents import Tool
 from langchain.agents import initialize_agent
 from langchain.utilities import WikipediaAPIWrapper
+
+sys.path.append("..")
+from ui.chat_ui import launch_gradio_interface
 
 
 def init_agent(tools, llm):
@@ -45,12 +48,16 @@ def create_llm_chain():
 
     model = load_model(model_name)
 
-    prompt_template = "Below is an instruction that describes a task. " \
-                      "If question is related to pytorch Write a response " \
-                      "that appropriately completes the request." \
-                      "\n\n### Instruction:\n{question}\n\n### Response:\n"
+    prompt_template = (
+        "Below is an instruction that describes a task. "
+        "If question is related to pytorch Write a response "
+        "that appropriately completes the request."
+        "\n\n### Instruction:\n{question}\n\n### Response:\n"
+    )
 
-    prompt = PromptTemplate(template=prompt_template, input_variables=["question"])
+    prompt = PromptTemplate(
+        template=prompt_template, input_variables=["question", "top_p", "top_k", "max_new_tokens"]
+    )
 
     llm_chain, llm = create_chat_bot(
         model_name=model_name,

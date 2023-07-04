@@ -1,8 +1,8 @@
 import argparse
 import logging
 import os
+import sys
 
-from chat_ui import launch_gradio_interface
 from create_chatbot import (
     load_model,
     read_prompt_from_path,
@@ -17,6 +17,9 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
 )
+
+sys.path.append("..")
+from ui.chat_ui import launch_gradio_interface
 
 
 def load_index(index_path):
@@ -52,7 +55,8 @@ if __name__ == "__main__":
     prompt_str = prompt_dict[args.prompt_name]
 
     prompt_template = create_prompt_template(
-        prompt_str=prompt_str, inputs=["chat_history", "question", "context"]
+        prompt_str=prompt_str,
+        inputs=["chat_history", "question", "context", "top_p", "top_k", "max_new_tokens"],
     )
 
     llm_chain, memory = create_chat_bot(
