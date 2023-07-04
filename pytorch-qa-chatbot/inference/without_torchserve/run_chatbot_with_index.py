@@ -2,7 +2,7 @@ import argparse
 import logging
 import os
 
-# from chat_ui import launch_gradio_interface
+#from chat_ui import launch_gradio_interface
 from create_chatbot import load_model, read_prompt_from_path, create_chat_bot
 from langchain.embeddings.huggingface import HuggingFaceInstructEmbeddings
 from langchain.vectorstores.faiss import FAISS
@@ -12,7 +12,6 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
 )
-
 
 sys.path.append('../..')
 

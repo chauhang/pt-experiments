@@ -16,9 +16,9 @@ def read_prompt_from_path(prompt_path):
     return prompt_dict
 
 
-def create_chat_bot(ts_host, ts_port, model_name, prompt_template, index=None):
+def create_chat_bot(ts_host, ts_port, ts_protocol, model_name, prompt_template, index=None):
 
-    llm = TorchServeEndpoint(host=ts_host, port=ts_port, model_name=model_name, verbose=True)
+    llm = TorchServeEndpoint(host=ts_host, port=ts_port, protocol=ts_protocol, model_name=model_name, verbose=True)
 
     memory = ConversationBufferWindowMemory(k=3, memory_key="chat_history", input_key="question")
     if index:

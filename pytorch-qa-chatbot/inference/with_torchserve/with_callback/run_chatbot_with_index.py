@@ -1,13 +1,12 @@
 import argparse
 import logging
 import os
-
-# from chat_ui import launch_gradio_interface
+import sys
+#from chat_ui import launch_gradio_interface
 from create_chatbot import read_prompt_from_path, create_chat_bot
 # from langchain.embeddings.huggingface import HuggingFaceEmbeddings
 from langchain.embeddings.huggingface import HuggingFaceInstructEmbeddings
 from langchain.vectorstores.faiss import FAISS
-
 
 logging.basicConfig(
     filename="pytorch-chatbot-with-index.log",
@@ -16,8 +15,8 @@ logging.basicConfig(
 )
 
 sys.path.append('../..')
-from ui.chat_ui import launch_gradio_interface
 
+from ui.chat_ui import launch_gradio_interface
 
 def load_index(index_path):
     if not os.path.exists(index_path):
@@ -33,6 +32,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model_name", type=str, default="alpaca-7b"
     )
+    parser.add_argument('--torchserve', action='store_true', help='Enable torchserve')
+    parser.add_argument('--callback', action='store_true', help='Enable callback')
     parser.add_argument("--prompt_path", type=str, default="question_with_context_prompts.json")
     parser.add_argument(
         "--prompt_name", type=str, default="QUESTION_WITH_CONTEXT_PROMPT_ADVANCED_PROMPT"
@@ -40,8 +41,14 @@ if __name__ == "__main__":
     parser.add_argument("--index_path", type=str, default="docs_blogs_faiss_index")
     parser.add_argument("--torchserve_host", type=str, default="localhost")
     parser.add_argument("--torchserve_port", type=str, default="7070")
+    parser.add_argument("--torchserve_protocol", type=str, default="gRPC")
 
     args = parser.parse_args()
+
+    if not args.torchserve and args.callback:
+        raise ValueError(
+            f"Invalid Value - Cannot run callback when torchserve is False"
+        )
 
     # model = load_model(model_name=args.model_name)
     index = load_index(index_path=args.index_path)
@@ -55,10 +62,11 @@ if __name__ == "__main__":
     llm_chain, memory = create_chat_bot(
         ts_host=args.torchserve_host,
         ts_port=args.torchserve_port,
+        ts_protocol=args.torchserve_protocol,
         model_name=args.model_name,
         prompt_template=prompt_template,
         index=index,
     )
 
-    launch_gradio_interface(llm_chain=llm_chain, index=index, memory=memory)
+    launch_gradio_interface(llm_chain=llm_chain, index=index, memory=memory, torchserve=args.torchserve, callback_flag=args.callback)
 

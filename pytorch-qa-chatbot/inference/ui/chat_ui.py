@@ -47,7 +47,7 @@ class Seafoam(Base):
         )
 
 
-def launch_gradio_interface(llm, llm_chain, memory, multiturn=False, index=False):
+def launch_gradio_interface(llm_chain, memory, torchserve, callback_flag, llm=None, multiturn=False, index=False):
     CSS ="""
     .contain { display: flex; flex-direction: column; }
     #component-0 { height: 100%; }
@@ -58,7 +58,7 @@ def launch_gradio_interface(llm, llm_chain, memory, multiturn=False, index=False
 
     seafoam = Seafoam()
 
-    if "torchserve and with callback":
+    if torchserve and callback_flag:    
         callback = AsyncIteratorCallbackHandler()
 
     def user(user_message, history):
@@ -95,6 +95,7 @@ def launch_gradio_interface(llm, llm_chain, memory, multiturn=False, index=False
     def torchserve_bot(history, top_p, top_k, max_new_tokens):
         global stop_btn
         logger.info(f"Sending Query! {history[-1][0]} with top_p {top_p} top_k {top_k} and max_new_tokens {max_new_tokens}")
+        #run_query(llm_chain, history[-1][0], memory, multiturn=multiturn, index=index, top_p=top_p, top_k=top_k, max_new_tokens=max_new_tokens)
         run_query(llm_chain, history[-1][0], memory, multiturn, index, top_p=top_p, top_k=top_k, max_new_tokens=max_new_tokens)
         history[-1][1] = ""
         flag = stop_btn = False
@@ -158,7 +159,7 @@ def launch_gradio_interface(llm, llm_chain, memory, multiturn=False, index=False
             clear = gr.Button("Clear")
 
         
-        if "torchserve and without callback":
+        if torchserve and not callback_flag:
             res = msg.submit(user, [msg, chatbot], [msg, chatbot], queue=False).then(
                 torchserve_bot, [chatbot, top_p, top_k, max_new_tokens], chatbot
             )
@@ -167,7 +168,7 @@ def launch_gradio_interface(llm, llm_chain, memory, multiturn=False, index=False
                 torchserve_bot, [chatbot, top_p, top_k, max_new_tokens], chatbot
             )
 
-        elif "torchserve and with callback":
+        elif torchserve and callback_flag:
             res = msg.submit(user, [msg, chatbot], [msg, chatbot], queue=False).then(
                 torchserve_callback_bot, [chatbot, top_p, top_k, max_new_tokens], chatbot
             )
@@ -176,7 +177,7 @@ def launch_gradio_interface(llm, llm_chain, memory, multiturn=False, index=False
                 torchserve_callback_bot, [chatbot, top_p, top_k, max_new_tokens], chatbot
             )
 
-        elif "without torchserve"
+        elif not torchserve:
             res = msg.submit(user, [msg, chatbot], [msg, chatbot], queue=False).then(
                 bot, [chatbot, top_p, top_k, max_new_tokens], chatbot
             )
