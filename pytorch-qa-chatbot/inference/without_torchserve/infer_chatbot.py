@@ -1,4 +1,5 @@
 import logging
+import langchain
 
 logger = logging.getLogger(__name__)
 
@@ -28,15 +29,19 @@ def parse_response(text):
         return text
 
 
-def run_query(llm_chain, question, memory, multiturn, index=None):
-    if index:
-        context = index.similarity_search(question, k=2)
-        logger.info(f"Fetched context: {context}")
-        result = llm_chain.run({"question": question, "context": context})
-        memory.clear()
+def run_query(chain, question, memory, multiturn, index=None):
+    if isinstance(chain, langchain.agents.agent.AgentExecutor):
+        result = chain(question)
+        return result["intermediate_steps"][0][0].log.split("Final Answer: ")[-1]
     else:
-        result = llm_chain.run(question)
-        if not multiturn:
+        if index:
+            context = index.similarity_search(question, k=2)
+            logger.info(f"Fetched context: {context}")
+            result = chain.run({"question": question, "context": context})
             memory.clear()
-    parsed_response = parse_response(result)
-    return parsed_response
+        else:
+            result = chain.run(question)
+            if not multiturn:
+                memory.clear()
+        parsed_response = parse_response(result)
+        return parsed_response

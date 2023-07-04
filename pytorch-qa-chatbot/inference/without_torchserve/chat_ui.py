@@ -14,22 +14,22 @@ class Seafoam(Base):
     def __init__(
         self,
         *,
-        primary_hue: colors.Color | str = colors.emerald,
-        secondary_hue: colors.Color | str = colors.blue,
-        neutral_hue: colors.Color | str = colors.gray,
-        spacing_size: sizes.Size | str = sizes.spacing_md,
-        radius_size: sizes.Size | str = sizes.radius_md,
-        text_size: sizes.Size | str = sizes.text_lg,
+        primary_hue: colors.Color or str = colors.emerald,
+        secondary_hue: colors.Color or str = colors.blue,
+        neutral_hue: colors.Color or str = colors.gray,
+        spacing_size: sizes.Size or str = sizes.spacing_md,
+        radius_size: sizes.Size or str = sizes.radius_md,
+        text_size: sizes.Size or str = sizes.text_lg,
         font: fonts.Font
-        | str
-        | Iterable[fonts.Font | str] = (
+        or str
+        or Iterable[fonts.Font or str] = (
             fonts.GoogleFont("Quicksand"),
             "ui-sans-serif",
             "sans-serif",
         ),
         font_mono: fonts.Font
-        | str
-        | Iterable[fonts.Font | str] = (
+        or str
+        or Iterable[fonts.Font or str] = (
             fonts.GoogleFont("IBM Plex Mono"),
             "ui-monospace",
             "monospace",
@@ -47,7 +47,7 @@ class Seafoam(Base):
         )
 
 
-def launch_gradio_interface(llm_chain, memory, multiturn=False, index=False):
+def launch_gradio_interface(chain, memory, multiturn=False, index=False):
     CSS = """
     .contain { display: flex; flex-direction: column; }
     #component-0 { height: 100%; }
@@ -64,7 +64,7 @@ def launch_gradio_interface(llm_chain, memory, multiturn=False, index=False):
     async def bot(history):
         logger.info(f"Sending Query: {history[-1][0]}")
         bot_message = run_query(
-            llm_chain=llm_chain,
+            chain=chain,
             question=history[-1][0],
             memory=memory,
             multiturn=multiturn,

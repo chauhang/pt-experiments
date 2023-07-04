@@ -3,7 +3,12 @@ import logging
 import os
 
 from chat_ui import launch_gradio_interface
-from create_chatbot import load_model, read_prompt_from_path, create_chat_bot
+from create_chatbot import (
+    load_model,
+    read_prompt_from_path,
+    create_chat_bot,
+    create_prompt_template,
+)
 from langchain.embeddings.huggingface import HuggingFaceInstructEmbeddings
 from langchain.vectorstores.faiss import FAISS
 
@@ -27,7 +32,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model_name", type=str, default="shrinath-suresh/alpaca-lora-7b-answer-summary"
     )
-    parser.add_argument("--max_tokens", type=int, default=128)
+    parser.add_argument("--max_tokens", type=int, default=256)
     parser.add_argument("--prompt_path", type=str, default="question_with_context_prompts.json")
     parser.add_argument(
         "--prompt_name", type=str, default="QUESTION_WITH_CONTEXT_PROMPT_ADVANCED_PROMPT"
@@ -44,14 +49,19 @@ if __name__ == "__main__":
         raise KeyError(
             f"Invalid key - {args.prompt_name}. Accepted values are {prompt_dict.keys()}"
         )
-    prompt_template = prompt_dict[args.prompt_name]
+    prompt_str = prompt_dict[args.prompt_name]
+
+    prompt_template = create_prompt_template(
+        prompt_str=prompt_str, inputs=["chat_history", "question", "context"]
+    )
+
     llm_chain, memory = create_chat_bot(
         model_name=args.model_name,
         model=model,
-        prompt_template=prompt_template,
+        prompt=prompt_template,
         max_tokens=args.max_tokens,
         index=index,
     )
     # result = run_query(llm_chain=llm_chain, index_path=args.index_path, question="How to save the model", memory=memory)
 
-    launch_gradio_interface(llm_chain=llm_chain, index=index, memory=memory)
+    launch_gradio_interface(chain=llm_chain, index=index, memory=memory)
