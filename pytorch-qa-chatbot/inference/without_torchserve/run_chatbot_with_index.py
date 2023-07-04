@@ -32,7 +32,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model_name", type=str, default="shrinath-suresh/alpaca-lora-7b-answer-summary"
     )
-    parser.add_argument("--max_tokens", type=int, default=128)
+    parser.add_argument("--max_tokens", type=int, default=256)
     parser.add_argument("--prompt_path", type=str, default="question_with_context_prompts.json")
     parser.add_argument(
         "--prompt_name", type=str, default="QUESTION_WITH_CONTEXT_PROMPT_ADVANCED_PROMPT"
@@ -58,7 +58,7 @@ if __name__ == "__main__":
     llm_chain, memory = create_chat_bot(
         model_name=args.model_name,
         model=model,
-        prompt_template=prompt_template,
+        prompt=prompt_template,
         max_tokens=args.max_tokens,
         index=index,
     )

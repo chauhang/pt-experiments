@@ -22,7 +22,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument("--prompt_path", type=str, default="only_question_prompts.json")
-    parser.add_argument("--max_tokens", type=int, default=128)
+    parser.add_argument("--max_tokens", type=int, default=256)
     parser.add_argument("--prompt_name", type=str, default="ONLY_QUESTION_ADVANCED_PROMPT")
     parser.add_argument("--multiturn", type=bool, default=False)
 
