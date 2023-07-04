@@ -1,0 +1,7 @@
+langchain
+transformers
+tqdm
+huggingface-hub
+pandas
+torch>=2.0.0
+openpyxl
