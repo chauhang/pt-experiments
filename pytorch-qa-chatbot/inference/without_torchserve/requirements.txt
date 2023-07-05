@@ -1,9 +1,0 @@
-torch >= 2.0.0
-transformers
-langchain
-sentencepiece
-accelerate
-gradio
-faiss-gpu
-huggingface-hub
-InstructorEmbedding

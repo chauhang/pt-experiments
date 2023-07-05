@@ -6,7 +6,7 @@ from langchain.callbacks import AsyncIteratorCallbackHandler
 import gradio as gr
 from gradio.themes.base import Base
 from gradio.themes.utils import colors, fonts, sizes
-from infer_chatbot import run_query
+from lib.infer_chatbot import run_query, run_query_with_callback, run_query_without_callback
 import asyncio
 
 logger = logging.getLogger(__name__)
@@ -47,7 +47,7 @@ class Seafoam(Base):
         )
 
 
-def launch_gradio_interface(llm_chain, memory, torchserve, callback_flag, llm=None, multiturn=False, index=False):
+def launch_gradio_interface(chain, memory, torchserve, protocol, callback_flag, llm=None, multiturn=False, index=False):
     CSS ="""
     .contain { display: flex; flex-direction: column; }
     #component-0 { height: 100%; }
@@ -62,7 +62,7 @@ def launch_gradio_interface(llm_chain, memory, torchserve, callback_flag, llm=No
         callback = AsyncIteratorCallbackHandler()
 
     def user(user_message, history):
-        return gr.update(value="", interactive=True), history + [[user_message, None]]
+        return gr.update(value="", interactive=False), history + [[user_message, None]]
 
     def stop_gen():
         global stop_btn
@@ -76,7 +76,7 @@ def launch_gradio_interface(llm_chain, memory, torchserve, callback_flag, llm=No
     async def bot(history, top_p, top_k, max_new_tokens):
         logger.info(f"Sending Query! {history[-1][0]} with top_p {top_p} top_k {top_k} and max_new_tokens {max_new_tokens}")
         bot_message = run_query(
-            llm_chain=llm_chain,
+            chain=chain,
             question=history[-1][0],
             memory=memory,
             multiturn=multiturn,
@@ -87,27 +87,46 @@ def launch_gradio_interface(llm_chain, memory, torchserve, callback_flag, llm=No
         )
         logger.info(f"Response: {bot_message}")
         history[-1][1] = ""
-        for character in bot_message:
-            history[-1][1] += character
-            time.sleep(0.05)
-            yield history
+        # for character in bot_message:
+        #     history[-1][1] += character
+        #     time.sleep(0.05)
+        #     yield history
+        flag = stop_btn = False
+        foo = ""
+        for resp in llm.streamer:
+            if stop_btn:
+                break
+            prediction = resp.decode("utf-8")
+            foo += prediction
+            print(prediction, flush=True, end="")
+            if "### Response:" in foo:
+                flag = True
+                bar = foo.split("### Response:")
+                history[-1][1] = bar[1].strip() if len(bar) > 1 else ""
+                foo = ""
+                continue
+            if flag:
+                history[-1][1] += prediction
+                yield history
 
-    def torchserve_bot(history, top_p, top_k, max_new_tokens):
+    def torchserve_bot(history, protocol, top_p, top_k, max_new_tokens):
         global stop_btn
         logger.info(f"Sending Query! {history[-1][0]} with top_p {top_p} top_k {top_k} and max_new_tokens {max_new_tokens}")
         #run_query(llm_chain, history[-1][0], memory, multiturn=multiturn, index=index, top_p=top_p, top_k=top_k, max_new_tokens=max_new_tokens)
-        run_query(llm_chain, history[-1][0], memory, multiturn, index, top_p=top_p, top_k=top_k, max_new_tokens=max_new_tokens)
+        run_query_without_callback(chain, history[-1][0], memory, multiturn, index, top_p=top_p, top_k=top_k, max_new_tokens=max_new_tokens)
         history[-1][1] = ""
         flag = stop_btn = False
         foo = ""
         for resp in llm.response:
             if stop_btn:
                 break
-            prediction = resp.prediction.decode("utf-8")
+            prediction = resp.prediction.decode("utf-8") if protocol == "gRPC" else resp.decode("utf-8")
             foo += prediction
             print(prediction, flush=True, end="")
             if "### Response:" in foo:
                 flag = True
+                bar = foo.split("### Response:")
+                history[-1][1] = bar[1].strip() if len(bar) > 1 else ""
                 foo = ""
                 continue
             if flag:
@@ -117,8 +136,8 @@ def launch_gradio_interface(llm_chain, memory, torchserve, callback_flag, llm=No
     async def torchserve_callback_bot(history, top_p, top_k, max_new_tokens):
         global stop_btn
         logger.info(f"Sending Query! {history[-1][0]} with top_p {top_p} top_k {top_k} and max_new_tokens {max_new_tokens}")
-        run = asyncio.create_task(run_query(
-            llm_chain=llm_chain,
+        run = asyncio.create_task(run_query_with_callback(
+            chain=chain,
             question=history[-1][0],
             memory=memory,
             callback=callback,
@@ -137,6 +156,8 @@ def launch_gradio_interface(llm_chain, memory, torchserve, callback_flag, llm=No
             print(token, flush=True, end="")
             if "### Response:" in foo:
                 flag = True
+                bar = foo.split("### Response:")
+                history[-1][1] = bar[1].strip() if len(bar) > 1 else ""
                 foo = ""
                 continue
             if flag:
@@ -154,7 +175,7 @@ def launch_gradio_interface(llm_chain, memory, torchserve, callback_flag, llm=No
         with gr.Row().style(equal_height=True):
             top_p = gr.Slider(minimum=0, maximum=1, step=0.01,label="top_p", value=0.95, interactive=True)
             top_k = gr.Slider(minimum=1, maximum=100, step=1,label="top_k", value=40, interactive=True)
-            max_new_tokens = gr.Textbox(show_label=True, label="Max New Tokens", value=512, interactive=True)
+            max_new_tokens = gr.Textbox(show_label=True, label="Max New Tokens", value=256, interactive=True)
             stop = gr.Button("Stop Generation")
             clear = gr.Button("Clear")
 

@@ -1,5 +1,0 @@
-{
-    "QUESTION_WITH_CONTEXT_PROMPT_ADVANCED_PROMPT": "{chat_history} Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.\\n\\n### Instruction:\\n{question}\\n\\n### Input:\\n{context}\\n\\n### Response:",
-    "QUESTION_WITH_CONTEXT_PROMPT_MEDIUM_PROMPT": "{chat_history} An expert PyTorch engineer would answer this question based on the context given below.\\n\\n### Question:\\n{question}\\n\\n### Input:\\n{context}\\n\\n### Response:",
-    "QUESTION_WITH_CONTEXT_PROMPT_BASIC_PROMPT": "{chat_history} Answer the question based on the context. If the answer is not present in the context, respond - I don't know and do not make up the answer.\\n\\n### Question:\\n{question}\\n\\n### Input:\\n{context}\\n\\n### Response:"
-}
