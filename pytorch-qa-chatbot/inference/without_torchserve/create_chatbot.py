@@ -9,7 +9,9 @@ from langchain.llms.base import LLM
 from langchain.memory import ConversationBufferWindowMemory
 from transformers import LlamaForCausalLM
 from transformers import LlamaTokenizer
-from transformers import TextStreamer
+from transformers import TextIteratorStreamer
+from threading import Thread
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -46,18 +48,21 @@ def create_prompt_template(prompt_str, inputs):
 def create_chat_bot(model_name, model, prompt, max_tokens, index=None, enable_memory=True):
 
     tokenizer = LlamaTokenizer.from_pretrained(model_name)
-    streamer = TextStreamer(tokenizer, skip_prompt=True, Timeout=5)
 
     class CustomLLM(LLM):
+        streamer: Optional[TextIteratorStreamer] = None
+
         def _call(self, prompt, stop=None) -> str:
+            self.streamer = TextIteratorStreamer(tokenizer, skip_prompt=True, Timeout=5)
             splitted_prompt, params = prompt.split("||")
             inputs = tokenizer([splitted_prompt], return_tensors="pt")
             params_dict = json.loads(params)
             inputs = inputs.to("cuda")
-            generation_kwargs = dict(inputs, streamer=streamer, **params_dict)
-            response = model.generate(**generation_kwargs)
-            response = tokenizer.decode(response[0])
-            return response
+            generation_kwargs = dict(inputs, streamer=self.streamer, **params_dict)
+            thread = Thread(target=model.generate, kwargs=generation_kwargs)
+            thread.start()
+            generated_text = ""
+            return generated_text
 
         @property
         def _identifying_params(self):
