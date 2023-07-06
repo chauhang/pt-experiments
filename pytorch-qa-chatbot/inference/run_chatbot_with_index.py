@@ -67,13 +67,10 @@ if __name__ == "__main__":
             f"Invalid key - {args.prompt_name}. Accepted values are {prompt_dict.keys()}"
         )
     
-    if not args.torchserve:
-        prompt_template = create_prompt_template(
-            prompt_str=prompt_str,
-            inputs=["chat_history", "question", "top_p", "top_k", "max_new_tokens"],
-        )
-    else:
-        prompt_template = prompt_dict[args.prompt_name]
+    prompt_template = create_prompt_template(
+        prompt_str=prompt_str,
+        inputs=["chat_history", "question", "context", "top_p", "top_k", "max_new_tokens"],
+    )
 
     chain, memory, llm = create_chat_bot(
         model_name=args.model_name,
@@ -84,8 +81,7 @@ if __name__ == "__main__":
         ts_protocol=args.torchserve_protocol,
         max_tokens=args.max_tokens,
         torchserve=args.torchserve,
-        index=index,
     )
     # result = run_query(llm_chain=llm_chain, index_path=args.index_path, question="How to save the model", memory=memory)
 
-    launch_gradio_interface(llm=llm, chain=chain, index=index, memory=memory, torchserve=args.torchserve, protocol=args.torchserve_ptotocol, callback_flag=args.callback)
+    launch_gradio_interface(llm=llm, chain=chain, index=index, memory=memory, torchserve=args.torchserve, protocol=args.torchserve_protocol, callback_flag=args.callback)

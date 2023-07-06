@@ -54,13 +54,10 @@ if __name__ == "__main__":
     prompt_str = prompt_dict[args.prompt_name]
     logging.info(f"Using Prompt: {prompt_str}")
 
-    if not args.torchserve:
-        prompt_template = create_prompt_template(
-            prompt_str=prompt_str,
-            inputs=["chat_history", "question", "top_p", "top_k", "max_new_tokens"],
-        )
-    else:
-        prompt_template = prompt_dict[args.prompt_name]
+    prompt_template = create_prompt_template(
+        prompt_str=prompt_str,
+        inputs=["chat_history", "question", "top_p", "top_k", "max_new_tokens"],
+    )
 
 
     llm_chain, memory, llm = create_chat_bot(
@@ -73,5 +70,4 @@ if __name__ == "__main__":
         max_tokens=args.max_tokens,
         torchserve=args.torchserve,
     )
-    launch_gradio_interface(llm=llm, chain=llm_chain, memory=memory, torchserve=args.torchserve, protocol=args.torchserve_ptotocol, callback_flag=args.callback, multiturn=args.multiturn, index=None)
-    
+    launch_gradio_interface(llm=llm, chain=llm_chain, memory=memory, torchserve=args.torchserve, protocol=args.torchserve_protocol, callback_flag=args.callback, multiturn=args.multiturn)

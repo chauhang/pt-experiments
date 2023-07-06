@@ -15,8 +15,6 @@ from lib.torchserve_endpoint import TorchServeEndpoint
 
 logger = logging.getLogger(__name__)
 
-
-
 def load_model(model_name):
     logger.info(f"Loading model: {model_name}")
     if not os.environ["HUGGINGFACE_KEY"]:
@@ -45,8 +43,7 @@ def create_prompt_template(prompt_str, inputs):
     return prompt
 
 
-def create_chat_bot(model_name, prompt_template, model=None, ts_host=None, ts_port=None, ts_protocol=None, index=None, torchserve=False, max_tokens=None, enable_memory=True):
-
+def create_chat_bot(model_name, prompt_template, model=None, ts_host=None, ts_port=None, ts_protocol=None, torchserve=False, max_tokens=None, enable_memory=True):
     llm = memory = None
     if torchserve:
         llm = TorchServeEndpoint(host=ts_host, port=ts_port, protocol=ts_protocol, model_name=model_name, verbose=True)
@@ -61,7 +58,6 @@ def create_chat_bot(model_name, prompt_template, model=None, ts_host=None, ts_po
             def _call(self, prompt, stop=None) -> str:
                 inputs, params = prompt.split("||")
                 self.streamer = TextIteratorStreamer(tokenizer, skip_prompt=True, Timeout=5)
-
                 inputs = tokenizer([inputs], return_tensors="pt")
                 params_dict = json.loads(params)
                 generation_kwargs = dict(inputs, streamer=self.streamer, **params_dict)
@@ -79,20 +75,9 @@ def create_chat_bot(model_name, prompt_template, model=None, ts_host=None, ts_po
 
         llm = CustomLLM()
 
-    if index:
-        prompt = PromptTemplate(
-            template=prompt_template, input_variables=["chat_history", "question", "context", "top_p", "top_k", "max_new_tokens"]
-        )
-    else:
-        prompt = PromptTemplate(
-            template=prompt_template, input_variables=["chat_history", "question", "top_p", "top_k", "max_new_tokens"]
-        )
-
     if enable_memory:
         memory = ConversationBufferWindowMemory(
             k=3, memory_key="chat_history", input_key="question"
         )
-    llm_chain = LLMChain(prompt=prompt, llm=llm, memory=memory, output_key="result")
+    llm_chain = LLMChain(prompt=prompt_template, llm=llm, memory=memory, output_key="result")
     return llm_chain, memory, llm
-
-
