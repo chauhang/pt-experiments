@@ -4,6 +4,7 @@ import logging
 from lib.chat_ui import launch_gradio_interface
 from lib.create_chatbot import (
     load_model,
+    load_peft_model,
     read_prompt_from_path,
     create_chat_bot,
     create_prompt_template,
@@ -31,6 +32,7 @@ if __name__ == "__main__":
     parser.add_argument("--torchserve_host", type=str, default="localhost")
     parser.add_argument("--torchserve_port", type=str, default="7070")
     parser.add_argument("--torchserve_protocol", type=str, default="gRPC")
+    parser.add_argument("--lora_weights", type=str, default="")
 
     args = parser.parse_args()
 
@@ -39,7 +41,10 @@ if __name__ == "__main__":
 
     model = None
     if not args.torchserve:
-        model = load_model(model_name=args.model_name)
+        if args.lora_weights:
+            model = load_peft_model(model_name=args.model_name, lora_weights=args.lora_weights)
+        else:
+            model = load_model(model_name=args.model_name)
 
     prompt_dict = read_prompt_from_path(prompt_path=args.prompt_path)
 
@@ -66,6 +71,10 @@ if __name__ == "__main__":
         max_tokens=args.max_tokens,
         torchserve=args.torchserve,
     )
+    parse_output = True
+    if args.lora_weights:
+        parse_output = False
+
     launch_gradio_interface(
         llm=llm,
         chain=llm_chain,
@@ -74,4 +83,5 @@ if __name__ == "__main__":
         protocol=args.torchserve_protocol,
         callback_flag=args.callback,
         multiturn=args.multiturn,
+        parse_output=parse_output,
     )
