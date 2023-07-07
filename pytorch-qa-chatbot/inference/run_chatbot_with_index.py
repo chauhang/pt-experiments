@@ -1,7 +1,6 @@
 import argparse
 import logging
 import os
-import sys
 
 from lib.create_chatbot import (
     load_model,

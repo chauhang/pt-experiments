@@ -1,6 +1,7 @@
 import logging
 from typing import Iterable
 import gradio as gr
+import time
 from gradio.themes.base import Base
 from gradio.themes.utils import colors, fonts, sizes
 import asyncio
@@ -84,22 +85,27 @@ def launch_gradio_interface(chain, memory, torchserve, callback_flag, protocol=N
         )
         logger.info(f"Response: {bot_message}")
         history[-1][1] = ""
-        flag = stop_btn = False
+        streamer = chain.llm.streamer
         foo = ""
-        for resp in llm.streamer:
-            if stop_btn:
-                break
-            prediction = resp.decode("utf-8")
-            foo += prediction
-            print(prediction, flush=True, end="")
+        response_flag = False
+        for new_text in streamer:
+            foo += new_text
             if "### Response:" in foo:
-                flag = True
-                bar = foo.split("### Response:")
-                history[-1][1] = bar[1].strip() if len(bar) > 1 else ""
+                response_flag = True
                 foo = ""
                 continue
-            if flag:
-                history[-1][1] += prediction
+            if response_flag:
+                history[-1][1] += new_text
+                time.sleep(0.05)
+                yield history
+        if not response_flag:
+            if "### Input:" in foo:
+                input_resp = foo.split("### Input:")[-1]
+                input_resp = input_resp.split("###")[0]
+                history[-1][1] += input_resp
+                yield history
+            else:
+                history[-1][1] += foo
                 yield history
 
     def torchserve_bot(history, top_p, top_k, max_new_tokens):

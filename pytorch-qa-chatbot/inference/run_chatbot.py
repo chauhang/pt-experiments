@@ -1,6 +1,5 @@
 import argparse
 import logging
-import sys
 
 from lib.chat_ui import launch_gradio_interface
 from lib.create_chatbot import (
