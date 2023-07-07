@@ -10,8 +10,10 @@ from langchain.llms.base import LLM
 import torch
 from transformers import LlamaForCausalLM
 from transformers import LlamaTokenizer
-from transformers import TextIteratorStreamer
 from lib.torchserve_endpoint import TorchServeEndpoint
+from transformers import TextIteratorStreamer
+from threading import Thread
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -53,17 +55,19 @@ def create_chat_bot(model_name, prompt_template, model=None, ts_host=None, ts_po
         class CustomLLM(LLM):
         
             """Streamer Object"""
-            streamer: Any = None
+            streamer: Optional[TextIteratorStreamer] = None
 
             def _call(self, prompt, stop=None) -> str:
-                inputs, params = prompt.split("||")
                 self.streamer = TextIteratorStreamer(tokenizer, skip_prompt=True, Timeout=5)
-                inputs = tokenizer([inputs], return_tensors="pt")
+                splitted_prompt, params = prompt.split("||")
+                inputs = tokenizer([splitted_prompt], return_tensors="pt")
                 params_dict = json.loads(params)
+                inputs = inputs.to("cuda")
                 generation_kwargs = dict(inputs, streamer=self.streamer, **params_dict)
                 thread = Thread(target=model.generate, kwargs=generation_kwargs)
                 thread.start()
-                return ""
+                generated_text = ""
+                return generated_text
 
             @property
             def _identifying_params(self):
