@@ -22,8 +22,8 @@ if __name__ == "__main__":
         "--model_name", type=str, default="shrinath-suresh/alpaca-lora-7b-answer-summary"
     )
 
-    parser.add_argument('--torchserve', action='store_true', help='Enable torchserve')
-    parser.add_argument('--callback', action='store_true', help='Enable callback')
+    parser.add_argument("--torchserve", action="store_true", help="Enable torchserve")
+    parser.add_argument("--callback", action="store_true", help="Enable callback")
     parser.add_argument("--max_tokens", type=int, default=256)
     parser.add_argument("--prompt_path", type=str, default="only_question_prompts.json")
     parser.add_argument("--prompt_name", type=str, default="ONLY_QUESTION_ADVANCED_PROMPT")
@@ -31,13 +31,11 @@ if __name__ == "__main__":
     parser.add_argument("--torchserve_host", type=str, default="localhost")
     parser.add_argument("--torchserve_port", type=str, default="7070")
     parser.add_argument("--torchserve_protocol", type=str, default="gRPC")
-    
+
     args = parser.parse_args()
 
     if not args.torchserve and args.callback:
-        raise ValueError(
-            f"Invalid Value - Cannot run callback when torchserve is False"
-        )
+        raise ValueError(f"Invalid Value - Cannot run callback when torchserve is False")
 
     model = None
     if not args.torchserve:
@@ -58,7 +56,6 @@ if __name__ == "__main__":
         inputs=["chat_history", "question", "top_p", "top_k", "max_new_tokens"],
     )
 
-
     llm_chain, memory, llm = create_chat_bot(
         model_name=args.model_name,
         model=model,
@@ -69,4 +66,12 @@ if __name__ == "__main__":
         max_tokens=args.max_tokens,
         torchserve=args.torchserve,
     )
-    launch_gradio_interface(llm=llm, chain=llm_chain, memory=memory, torchserve=args.torchserve, protocol=args.torchserve_protocol, callback_flag=args.callback, multiturn=args.multiturn)
+    launch_gradio_interface(
+        llm=llm,
+        chain=llm_chain,
+        memory=memory,
+        torchserve=args.torchserve,
+        protocol=args.torchserve_protocol,
+        callback_flag=args.callback,
+        multiturn=args.multiturn,
+    )

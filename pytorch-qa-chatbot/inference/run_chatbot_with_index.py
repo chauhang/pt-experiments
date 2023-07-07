@@ -34,8 +34,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model_name", type=str, default="shrinath-suresh/alpaca-lora-7b-answer-summary"
     )
-    parser.add_argument('--torchserve', action='store_true', help='Enable torchserve')
-    parser.add_argument('--callback', action='store_true', help='Enable callback')
+    parser.add_argument("--torchserve", action="store_true", help="Enable torchserve")
+    parser.add_argument("--callback", action="store_true", help="Enable callback")
     parser.add_argument("--max_tokens", type=int, default=256)
     parser.add_argument("--prompt_path", type=str, default="question_with_context_prompts.json")
     parser.add_argument(
@@ -49,10 +49,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if not args.torchserve and args.callback:
-        raise ValueError(
-            f"Invalid Value - Cannot run callback when torchserve is False"
-        )
-    
+        raise ValueError(f"Invalid Value - Cannot run callback when torchserve is False")
+
     model = None
     if not args.torchserve:
         model = load_model(model_name=args.model_name)
@@ -65,7 +63,7 @@ if __name__ == "__main__":
         raise KeyError(
             f"Invalid key - {args.prompt_name}. Accepted values are {prompt_dict.keys()}"
         )
-    
+
     prompt_template = create_prompt_template(
         prompt_str=prompt_str,
         inputs=["chat_history", "question", "context", "top_p", "top_k", "max_new_tokens"],
@@ -83,4 +81,12 @@ if __name__ == "__main__":
     )
     # result = run_query(llm_chain=llm_chain, index_path=args.index_path, question="How to save the model", memory=memory)
 
-    launch_gradio_interface(llm=llm, chain=chain, index=index, memory=memory, torchserve=args.torchserve, protocol=args.torchserve_protocol, callback_flag=args.callback)
+    launch_gradio_interface(
+        llm=llm,
+        chain=chain,
+        index=index,
+        memory=memory,
+        torchserve=args.torchserve,
+        protocol=args.torchserve_protocol,
+        callback_flag=args.callback,
+    )

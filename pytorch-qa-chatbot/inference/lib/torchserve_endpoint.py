@@ -48,8 +48,7 @@ class TorchServeEndpoint(LLM):
         except ImportError as e:
             if "requests" in str(e):
                 raise ImportError(
-                    "Could not import requests."
-                    "Please install it with `pip install -U requests`."
+                    "Could not import requests." "Please install it with `pip install -U requests`."
                 )
             else:
                 raise ImportError(
@@ -59,9 +58,7 @@ class TorchServeEndpoint(LLM):
 
         if values["protocol"] == "gRPC":
             channel = grpc.insecure_channel(URL)
-            values["client"] = inference_pb2_grpc.InferenceAPIsServiceStub(
-                channel
-            )
+            values["client"] = inference_pb2_grpc.InferenceAPIsServiceStub(channel)
 
         return values
 
@@ -69,9 +66,7 @@ class TorchServeEndpoint(LLM):
         import inference_pb2
 
         response = stub.StreamPredictions(
-            inference_pb2.PredictionsRequest(
-                model_name=self.model_name, input=model_input
-            )
+            inference_pb2.PredictionsRequest(model_name=self.model_name, input=model_input)
         )
         return response
 
@@ -99,9 +94,9 @@ class TorchServeEndpoint(LLM):
 
         if self.streaming:
             self.response = (
-                self._rest_infer_stream(
-                    self.host, self.port, input_data
-                ).iter_content(chunk_size=None)
+                self._rest_infer_stream(self.host, self.port, input_data).iter_content(
+                    chunk_size=None
+                )
                 if self.protocol == "REST"
                 else self._grpc_infer_stream(self.client, input_data)
             )
@@ -122,9 +117,9 @@ class TorchServeEndpoint(LLM):
         if self.streaming:
             combined_text_output = ""
             self.response = (
-                self._rest_infer_stream(
-                    self.host, self.port, input_data
-                ).iter_content(chunk_size=None)
+                self._rest_infer_stream(self.host, self.port, input_data).iter_content(
+                    chunk_size=None
+                )
                 if self.protocol == "REST"
                 else self._grpc_infer_stream(self.client, input_data)
             )
@@ -135,9 +130,7 @@ class TorchServeEndpoint(LLM):
                     else resp.prediction.decode("utf-8")
                 )
                 if run_manager:
-                    await run_manager.on_llm_new_token(
-                        token=prediction, verbose=self.verbose
-                    )
+                    await run_manager.on_llm_new_token(token=prediction, verbose=self.verbose)
                 combined_text_output += prediction
             return combined_text_output
 

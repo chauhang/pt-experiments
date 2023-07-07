@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 stop_btn = None
 
+
 class Seafoam(Base):
     def __init__(
         self,
@@ -23,11 +24,16 @@ class Seafoam(Base):
         spacing_size: sizes.Size or str = sizes.spacing_md,
         radius_size: sizes.Size or str = sizes.radius_md,
         text_size: sizes.Size or str = sizes.text_lg,
-        font: fonts.Font or str or Iterable[fonts.Font or str] = (
+        font: fonts.Font
+        or str
+        or Iterable[fonts.Font or str] = (
             fonts.GoogleFont("Quicksand"),
             "ui-sans-serif",
             "sans-serif",
-        ), font_mono: fonts.Font or str or Iterable[fonts.Font or str] = (
+        ),
+        font_mono: fonts.Font
+        or str
+        or Iterable[fonts.Font or str] = (
             fonts.GoogleFont("IBM Plex Mono"),
             "ui-monospace",
             "monospace",
@@ -45,8 +51,10 @@ class Seafoam(Base):
         )
 
 
-def launch_gradio_interface(chain, memory, torchserve, callback_flag, protocol=None, llm=None, multiturn=False, index=False):
-    CSS ="""
+def launch_gradio_interface(
+    chain, memory, torchserve, callback_flag, protocol=None, llm=None, multiturn=False, index=False
+):
+    CSS = """
     .contain { display: flex; flex-direction: column; }
     #component-0 { height: 100%; }
     #chatbot { flex-grow: 1; }
@@ -60,7 +68,7 @@ def launch_gradio_interface(chain, memory, torchserve, callback_flag, protocol=N
 
     def user(user_message, history):
         return gr.update(value="", interactive=False), history + [[user_message, None]]
-    
+
     def stop_gen():
         global stop_btn
         stop_btn = True
@@ -69,10 +77,11 @@ def launch_gradio_interface(chain, memory, torchserve, callback_flag, protocol=N
     def mem_clear():
         logger.info("Clearing memory")
         memory.clear()
-    
 
     async def bot(history, top_p, top_k, max_new_tokens):
-        logger.info(f"Sending Query! {history[-1][0]} with top_p {top_p} top_k {top_k} and max_new_tokens {max_new_tokens}")
+        logger.info(
+            f"Sending Query! {history[-1][0]} with top_p {top_p} top_k {top_k} and max_new_tokens {max_new_tokens}"
+        )
         bot_message = run_query(
             chain=chain,
             question=history[-1][0],
@@ -110,15 +119,28 @@ def launch_gradio_interface(chain, memory, torchserve, callback_flag, protocol=N
 
     def torchserve_bot(history, top_p, top_k, max_new_tokens):
         global stop_btn
-        logger.info(f"Sending Query! {history[-1][0]} with top_p {top_p} top_k {top_k} and max_new_tokens {max_new_tokens}")
-        run_query_without_callback(chain, history[-1][0], memory, multiturn, index, top_p=top_p, top_k=top_k, max_new_tokens=max_new_tokens)
+        logger.info(
+            f"Sending Query! {history[-1][0]} with top_p {top_p} top_k {top_k} and max_new_tokens {max_new_tokens}"
+        )
+        run_query_without_callback(
+            chain,
+            history[-1][0],
+            memory,
+            multiturn,
+            index,
+            top_p=top_p,
+            top_k=top_k,
+            max_new_tokens=max_new_tokens,
+        )
         history[-1][1] = ""
         flag = stop_btn = False
         foo = ""
         for resp in llm.response:
             if stop_btn:
                 break
-            prediction = resp.prediction.decode("utf-8") if protocol == "gRPC" else resp.decode("utf-8")
+            prediction = (
+                resp.prediction.decode("utf-8") if protocol == "gRPC" else resp.decode("utf-8")
+            )
             foo += prediction
             print(prediction, flush=True, end="")
             if "### Response:" in foo:
@@ -133,17 +155,22 @@ def launch_gradio_interface(chain, memory, torchserve, callback_flag, protocol=N
 
     async def torchserve_callback_bot(history, top_p, top_k, max_new_tokens):
         global stop_btn
-        logger.info(f"Sending Query! {history[-1][0]} with top_p {top_p} top_k {top_k} and max_new_tokens {max_new_tokens}")
-        run = asyncio.create_task(run_query_with_callback(
-            chain=chain,
-            question=history[-1][0],
-            memory=memory,
-            callback=callback,
-            multiturn=multiturn,
-            index=index,
-            top_p=top_p,
-            top_k=top_k,
-            max_new_tokens=max_new_tokens))
+        logger.info(
+            f"Sending Query! {history[-1][0]} with top_p {top_p} top_k {top_k} and max_new_tokens {max_new_tokens}"
+        )
+        run = asyncio.create_task(
+            run_query_with_callback(
+                chain=chain,
+                question=history[-1][0],
+                memory=memory,
+                callback=callback,
+                multiturn=multiturn,
+                index=index,
+                top_p=top_p,
+                top_k=top_k,
+                max_new_tokens=max_new_tokens,
+            )
+        )
         history[-1][1] = ""
         flag = stop_btn = False
         foo = ""
@@ -163,7 +190,6 @@ def launch_gradio_interface(chain, memory, torchserve, callback_flag, protocol=N
                 yield history
         await run
 
-
     with gr.Blocks(css=CSS, theme=seafoam) as demo:
         chatbot = gr.Chatbot(label="PyTorch Bot", show_label=True, elem_id="chatbot")
         with gr.Row().style(equal_height=True):
@@ -172,9 +198,15 @@ def launch_gradio_interface(chain, memory, torchserve, callback_flag, protocol=N
             with gr.Column(scale=1):
                 generate = gr.Button(value="Send", elem_id="send_button")
         with gr.Row().style(equal_height=True):
-            top_p = gr.Slider(minimum=0, maximum=1, step=0.01,label="top_p", value=1, interactive=True)
-            top_k = gr.Slider(minimum=1, maximum=100, step=1,label="top_k", value=50, interactive=True)
-            max_new_tokens = gr.Textbox(show_label=True, label="Max New Tokens", value=256, interactive=True)
+            top_p = gr.Slider(
+                minimum=0, maximum=1, step=0.01, label="top_p", value=1, interactive=True
+            )
+            top_k = gr.Slider(
+                minimum=1, maximum=100, step=1, label="top_k", value=50, interactive=True
+            )
+            max_new_tokens = gr.Textbox(
+                show_label=True, label="Max New Tokens", value=256, interactive=True
+            )
             stop = gr.Button("Stop Generation")
             clear = gr.Button("Clear")
 
@@ -195,7 +227,13 @@ def launch_gradio_interface(chain, memory, torchserve, callback_flag, protocol=N
         )
 
         res.then(lambda: gr.update(interactive=True), None, [msg], queue=False)
-        stop.click(stop_gen, None, None, queue=False).then(lambda: gr.update(interactive=True), None, [msg], queue=False)
-        clear.click(mem_clear, None, chatbot, queue=False).then(lambda: gr.update(interactive=True), None, [msg], queue=False)
+        stop.click(stop_gen, None, None, queue=False).then(
+            lambda: gr.update(interactive=True), None, [msg], queue=False
+        )
+        clear.click(mem_clear, None, chatbot, queue=False).then(
+            lambda: gr.update(interactive=True), None, [msg], queue=False
+        )
 
-    demo.queue().launch(server_name="0.0.0.0", ssl_verify=False, debug=True, share=True, show_error=True)
+    demo.queue().launch(
+        server_name="0.0.0.0", ssl_verify=False, debug=True, share=True, show_error=True
+    )

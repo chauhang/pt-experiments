@@ -17,6 +17,7 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
+
 def load_model(model_name):
     logger.info(f"Loading model: {model_name}")
     if not os.environ["HUGGINGFACE_KEY"]:
@@ -25,12 +26,10 @@ def load_model(model_name):
         )
     hf_hub.login(token=os.environ["HUGGINGFACE_KEY"])
     model = LlamaForCausalLM.from_pretrained(
-        model_name,
-        torch_dtype=torch.float16,
-        device_map="auto",
-        use_auth_token=True
+        model_name, torch_dtype=torch.float16, device_map="auto", use_auth_token=True
     )
     return model
+
 
 def read_prompt_from_path(prompt_path):
     if not os.path.exists(prompt_path):
@@ -40,21 +39,35 @@ def read_prompt_from_path(prompt_path):
         prompt_dict = json.load(fp)
     return prompt_dict
 
+
 def create_prompt_template(prompt_str, inputs):
     prompt = PromptTemplate(template=prompt_str, input_variables=inputs)
     return prompt
 
 
-def create_chat_bot(model_name, prompt_template, model=None, ts_host=None, ts_port=None, ts_protocol=None, torchserve=False, max_tokens=None, enable_memory=True):
+def create_chat_bot(
+    model_name,
+    prompt_template,
+    model=None,
+    ts_host=None,
+    ts_port=None,
+    ts_protocol=None,
+    torchserve=False,
+    max_tokens=None,
+    enable_memory=True,
+):
     llm = memory = None
     if torchserve:
-        llm = TorchServeEndpoint(host=ts_host, port=ts_port, protocol=ts_protocol, model_name=model_name, verbose=True)
+        llm = TorchServeEndpoint(
+            host=ts_host, port=ts_port, protocol=ts_protocol, model_name=model_name, verbose=True
+        )
     else:
         tokenizer = LlamaTokenizer.from_pretrained(model_name, use_auth_token=True)
 
         class CustomLLM(LLM):
-        
+
             """Streamer Object"""
+
             streamer: Optional[TextIteratorStreamer] = None
 
             def _call(self, prompt, stop=None) -> str:

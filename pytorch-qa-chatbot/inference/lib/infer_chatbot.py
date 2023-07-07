@@ -1,6 +1,8 @@
 import logging
 import langchain
+
 logger = logging.getLogger(__name__)
+
 
 def parse_response(text):
     return_msg = ""
@@ -26,24 +28,49 @@ def parse_response(text):
     else:
         return text
 
-async def run_query_with_callback(chain, question, memory, callback, multiturn, top_p, top_k, max_new_tokens, index):
+
+async def run_query_with_callback(
+    chain, question, memory, callback, multiturn, top_p, top_k, max_new_tokens, index
+):
     print(question)
     if index:
         context = index.similarity_search(question, k=2)
         logger.info(f"Fetched context: {context}")
-        result = await chain.arun(question=question, context=context, callbacks=[callback], top_p=top_p, top_k=top_k, max_new_tokens=max_new_tokens)
+        result = await chain.arun(
+            question=question,
+            context=context,
+            callbacks=[callback],
+            top_p=top_p,
+            top_k=top_k,
+            max_new_tokens=max_new_tokens,
+        )
         memory.clear()
     else:
-        result = await chain.arun(question=question, callbacks=[callback], top_p=top_p, top_k=top_k, max_new_tokens=max_new_tokens)
+        result = await chain.arun(
+            question=question,
+            callbacks=[callback],
+            top_p=top_p,
+            top_k=top_k,
+            max_new_tokens=max_new_tokens,
+        )
         if not multiturn:
             memory.clear()
     return result
 
-def run_query_without_callback(chain, question, memory, multiturn, index, top_p, top_k, max_new_tokens):
+
+def run_query_without_callback(
+    chain, question, memory, multiturn, index, top_p, top_k, max_new_tokens
+):
     if index:
         context = index.similarity_search(question, k=2)
         logger.info(f"Fetched context: {context}")
-        chain.run(question=question, context=context, top_p=top_p, top_k=top_k, max_new_tokens=max_new_tokens)
+        chain.run(
+            question=question,
+            context=context,
+            top_p=top_p,
+            top_k=top_k,
+            max_new_tokens=max_new_tokens,
+        )
         memory.clear()
     else:
         chain.run(question=question, top_p=top_p, top_k=top_k, max_new_tokens=max_new_tokens)
