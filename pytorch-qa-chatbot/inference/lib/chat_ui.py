@@ -89,7 +89,6 @@ def launch_gradio_interface(chain, memory, torchserve, callback_flag, protocol=N
         foo = ""
         response_flag = False
         for new_text in streamer:
-            print(new_text)
             foo += new_text
             if "### Response:" in foo:
                 response_flag = True
