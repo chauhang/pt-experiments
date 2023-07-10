@@ -1,4 +1,9 @@
 [
-  "shrinath-suresh/alpaca-lora-7b-answer-summary",
-  "shrinath-suresh/alpaca-lora-7b-context-summary"
+    {
+        "model_name" : "shrinath-suresh/alpaca-lora-13b-summary-finetuned-llama-base"
+    },
+    {
+        "model_name" : "tiiuae/falcon-40b-instruct",
+        "lora_weights" : "shrinath-suresh/falcon-40b-answer-summary"
+    }
 ]

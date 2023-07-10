@@ -15,6 +15,8 @@ from tqdm import tqdm
 from transformers import LlamaForCausalLM
 from transformers import LlamaTokenizer
 from transformers import TextStreamer
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+from peft import PeftModel
 
 
 def read_prompt_from_path(prompt_path):
@@ -29,12 +31,17 @@ def read_questions_from_path(question_path):
     return question_list
 
 
+def login_hf_hub():
+    if not os.environ["HUGGINGFACE_KEY"]:
+        raise EnvironmentError(
+            "HUGGINGFACE_KEY - key missing. set in the environment before running the script"
+        )
+    hf_hub.login(token=os.environ["HUGGINGFACE_KEY"])
+
+
 def load_model(model_name):
     print("Loading model: ", model_name)
-    huggingface_api_key = ""
-    if not huggingface_api_key:
-        raise ValueError("Set your Huggingface key in the code before running the script")
-    hf_hub.login(token=huggingface_api_key)
+    login_hf_hub()
     model = LlamaForCausalLM.from_pretrained(
         model_name,
         torch_dtype=torch.float16,
@@ -43,16 +50,47 @@ def load_model(model_name):
     return model
 
 
+def load_peft_model(model_name, lora_weights):
+    print("Loading model: ", model_name)
+    login_hf_hub()
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_use_double_quant=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=torch.bfloat16,
+    )
+
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name, trust_remote_code=True, quantization_config=bnb_config, device_map="auto"
+    )
+
+    model = PeftModel.from_pretrained(
+        model,
+        lora_weights,
+        device_map="auto",
+        torch_dtype=torch.bfloat16,
+    )
+    return model
+
+
 def setup(model_name, prompt_type, model, prompt_template):
 
-    tokenizer = LlamaTokenizer.from_pretrained(model_name)
+    if "alpaca" in model_name.lower():
+        tokenizer = LlamaTokenizer.from_pretrained(model_name, use_auth_token=True)
+
+    else:
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        tokenizer.pad_token = tokenizer.eos_token
     streamer = TextStreamer(tokenizer, skip_prompt=True, Timeout=5)
 
     class CustomLLM(LLM):
         def _call(self, prompt, stop=None) -> str:
             inputs = tokenizer([prompt], return_tensors="pt")
 
-            response = model.generate(**inputs, streamer=streamer, max_new_tokens=128)
+            inputs = inputs.to("cuda")
+            response = model.generate(
+                input_ids=inputs["input_ids"], streamer=streamer, max_new_tokens=256
+            )
             response = tokenizer.decode(response[0])
             return response
 
@@ -83,6 +121,9 @@ def parse_response(text):
         text = text.split("### Response:")[-1]
         text = text.split("###")[0]
         return text
+    elif "Answer:" in text:
+        text = text.split("Answer:")[-1]
+        return text
     else:
         return text
 
@@ -92,6 +133,7 @@ def run_query(prompt_type, llm_chain, question_list, memory):
     chat_history_list = []
     actual_result_list = []
     for question in tqdm(question_list):
+        print("question", question)
         if prompt_type == "question_with_context":
             embeddings = HuggingFaceEmbeddings()
             faiss_index = FAISS.load_local("docs_blogs_faiss_index", embeddings)
@@ -100,6 +142,7 @@ def run_query(prompt_type, llm_chain, question_list, memory):
         else:
             result = llm_chain.run(question)
 
+        print("result", result)
         chat_history = memory.chat_memory.messages[1].content
         chat_history_list.append(chat_history)
 
@@ -143,8 +186,13 @@ def write_model_output(model_name, prompt_type, df, result_dir):
 
 def infer(model_name, model, args):
 
-    prompt_dict = read_prompt_from_path(prompt_path=args.prompt_path)
+    prompt_list = read_prompt_from_path(prompt_path=args.prompt_path)
     question_list = read_questions_from_path(question_path=args.question_path)
+
+    if "alpaca" in model_name.lower():
+        prompt_dict = prompt_list[0]["alpaca_prompt"]
+    else:
+        prompt_dict = prompt_list[1]["falcon_prompt"]
 
     for prompt_type, prompt_list in prompt_dict.items():
         print("Processing prompt type: ", prompt_type)
@@ -189,11 +237,14 @@ def remove_cache(cache_path):
 
 def main(args):
     model_list = read_model_list(model_path=args.model_path)
-    for model_name in model_list:
-        print("Processing model: ", model_name)
-        print("Loading model: ", model_name)
-        model = load_model(model_name)
-        infer(model_name, model, args)
+    for model_data in model_list:
+        print("Processing model: ", model_data)
+        print("Loading model: ", model_data)
+        if len(model_data) > 1:
+            model = load_peft_model(model_data["model_name"], model_data["lora_weights"])
+        else:
+            model = load_model(model_data["model_name"])
+        infer(model_data["model_name"], model, args)
         remove_cache(cache_path=args.cache_path)
 
 
