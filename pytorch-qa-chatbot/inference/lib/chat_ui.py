@@ -75,7 +75,7 @@ def launch_gradio_interface(
     callback = AsyncIteratorCallbackHandler()
 
     def user(user_message, history):
-        return gr.update(value="", interactive=False), history + [[user_message, None]]
+        return gr.update(value="", interactive=True), history + [[user_message, None]]
 
     def stop_gen():
         global stop_btn
@@ -86,7 +86,7 @@ def launch_gradio_interface(
         logger.info("Clearing memory")
         memory.clear()
 
-    async def bot(history, top_p, top_k, max_new_tokens):
+    def bot(history, top_p, top_k, max_new_tokens):
         logger.info(
             f"Sending Query! {history[-1][0]} with top_p {top_p} top_k {top_k} and max_new_tokens {max_new_tokens}"
         )
