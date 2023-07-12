@@ -75,7 +75,7 @@ def launch_gradio_interface(
     callback = AsyncIteratorCallbackHandler()
 
     def user(user_message, history):
-        return gr.update(value="", interactive=True), history + [[user_message, None]]
+        return gr.update(value="", interactive=False), history + [[user_message, None]]
 
     def stop_gen():
         global stop_btn
@@ -235,10 +235,6 @@ def launch_gradio_interface(
             bot = torchserve_callback_bot
         elif not torchserve:
             bot = bot
-
-        res = msg.submit(user, [msg, chatbot], [msg, chatbot], queue=False).then(
-            bot, [chatbot, top_p, top_k, max_new_tokens], chatbot
-        )
 
         res = generate.click(user, [msg, chatbot], [msg, chatbot], queue=False).then(
             bot, [chatbot, top_p, top_k, max_new_tokens], chatbot
