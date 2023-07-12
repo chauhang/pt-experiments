@@ -1,0 +1,13 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: sticky-svc
+spec:
+  host: sticky-svc.default.svc.cluster.local
+  trafficPolicy:
+    loadBalancer:
+      consistentHash:
+        # httpHeaderName: x-user
+        httpCookie:
+          name: session_id
+          ttl: 60s

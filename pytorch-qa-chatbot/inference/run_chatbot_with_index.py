@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import uuid
 
 from lib.create_chatbot import (
     load_model,
@@ -76,7 +77,7 @@ if __name__ == "__main__":
         ts_host=args.torchserve_host,
         ts_port=args.torchserve_port,
         ts_protocol=args.torchserve_protocol,
-        max_tokens=args.max_tokens,
+        session_id=uuid.uuid1(),
         torchserve=args.torchserve,
     )
     # result = run_query(llm_chain=llm_chain, index_path=args.index_path, question="How to save the model", memory=memory)

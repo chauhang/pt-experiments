@@ -1,5 +1,6 @@
 import argparse
 import logging
+import uuid
 
 from lib.chat_ui import launch_gradio_interface
 from lib.create_chatbot import (
@@ -68,7 +69,7 @@ if __name__ == "__main__":
         ts_host=args.torchserve_host,
         ts_port=args.torchserve_port,
         ts_protocol=args.torchserve_protocol,
-        max_tokens=args.max_tokens,
+        session_id=uuid.uuid1(),
         torchserve=args.torchserve,
     )
     parse_output = True
