@@ -1,5 +1,6 @@
 {
     "ONLY_QUESTION_ADVANCED_PROMPT": "{chat_history} Below is an instruction that describes a task. Write a response that appropriately completes the request.\\n\\n### Instruction:\\n{question}\\n\\n### Response:\\n||{{\"top_p\":{top_p},\"top_k\":{top_k},\"max_new_tokens\":{max_new_tokens}}}",
     "ONLY_QUESTION_MEDIUM_PROMPT": "{chat_history} An expert PyTorch engineer would answer this question\\n\\n### Question:\\n{question}\\n\\n### Response:\\n||{{\"top_p\":{top_p},\"top_k\":{top_k},\"max_new_tokens\":{max_new_tokens}}}",
-    "ONLY_QUESTION_PROMPT_BASIC_PROMPT": "{chat_history} Answer the following question.\\n\\n### Question:\\n{question}\\n\\n### Response:\\n||{{\"top_p\":{top_p},\"top_k\":{top_k},\"max_new_tokens\":{max_new_tokens}}}"
+    "ONLY_QUESTION_PROMPT_BASIC_PROMPT": "{chat_history} Answer the following question.\\n\\n### Question:\\n{question}\\n\\n### Response:\\n||{{\"top_p\":{top_p},\"top_k\":{top_k},\"max_new_tokens\":{max_new_tokens}}}",
+    "FALCON_PROMPT": "{chat_history} As a pytorch expert engineer answer the question. Question: \\n{question}\\n---\\Answer:\\n||{{\"top_p\":{top_p},\"top_k\":{top_k},\"max_new_tokens\":{max_new_tokens}}}"
 }

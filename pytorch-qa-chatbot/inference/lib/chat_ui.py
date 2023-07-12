@@ -52,7 +52,15 @@ class Seafoam(Base):
 
 
 def launch_gradio_interface(
-    chain, memory, torchserve, callback_flag, protocol=None, llm=None, multiturn=False, index=False
+    chain,
+    memory,
+    torchserve,
+    callback_flag,
+    protocol=None,
+    llm=None,
+    multiturn=False,
+    index=False,
+    parse_output=True,
 ):
     CSS = """
     .contain { display: flex; flex-direction: column; }
@@ -78,7 +86,7 @@ def launch_gradio_interface(
         logger.info("Clearing memory")
         memory.clear()
 
-    async def bot(history, top_p, top_k, max_new_tokens):
+    def bot(history, top_p, top_k, max_new_tokens):
         logger.info(
             f"Sending Query! {history[-1][0]} with top_p {top_p} top_k {top_k} and max_new_tokens {max_new_tokens}"
         )
@@ -95,26 +103,36 @@ def launch_gradio_interface(
         logger.info(f"Response: {bot_message}")
         history[-1][1] = ""
         streamer = chain.llm.streamer
-        foo = ""
-        response_flag = False
-        for new_text in streamer:
-            foo += new_text
-            if "### Response:" in foo:
-                response_flag = True
-                foo = ""
-                continue
-            if response_flag:
+
+        if parse_output:
+            foo = ""
+            response_flag = False
+            for new_text in streamer:
+                print(new_text)
+                foo += new_text
+                if "### Response:" in foo:
+                    response_flag = True
+                    foo = ""
+                    continue
+                if response_flag:
+                    history[-1][1] += new_text
+                    time.sleep(0.05)
+                    yield history
+            if not response_flag:
+                if "### Input:" in foo:
+                    input_resp = foo.split("### Input:")[-1]
+                    input_resp = input_resp.split("###")[0]
+                    history[-1][1] += input_resp
+                    yield history
+                else:
+                    history[-1][1] += foo
+                    yield history
+        else:
+            for new_text in streamer:
+                print("new text: ", new_text)
+                if "---\Answer:" in new_text or "<|endoftext|>" in new_text:
+                    break
                 history[-1][1] += new_text
-                time.sleep(0.05)
-                yield history
-        if not response_flag:
-            if "### Input:" in foo:
-                input_resp = foo.split("### Input:")[-1]
-                input_resp = input_resp.split("###")[0]
-                history[-1][1] += input_resp
-                yield history
-            else:
-                history[-1][1] += foo
                 yield history
 
     def torchserve_bot(history, top_p, top_k, max_new_tokens):
@@ -217,10 +235,6 @@ def launch_gradio_interface(
             bot = torchserve_callback_bot
         elif not torchserve:
             bot = bot
-
-        res = msg.submit(user, [msg, chatbot], [msg, chatbot], queue=False).then(
-            bot, [chatbot, top_p, top_k, max_new_tokens], chatbot
-        )
 
         res = generate.click(user, [msg, chatbot], [msg, chatbot], queue=False).then(
             bot, [chatbot, top_p, top_k, max_new_tokens], chatbot
