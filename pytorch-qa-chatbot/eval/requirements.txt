@@ -1,5 +1,7 @@
+peft
 langchain
 transformers
+sentence_transformers
 tqdm
 huggingface-hub
 pandas
