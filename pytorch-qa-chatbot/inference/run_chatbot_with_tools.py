@@ -61,7 +61,8 @@ def create_llm_chain():
     )
 
     prompt = PromptTemplate(
-        template=prompt_template, input_variables=["question", "top_p", "top_k", "max_new_tokens"]
+        template=prompt_template,
+        input_variables=["question", "temperature", "top_p", "top_k", "max_new_tokens"],
     )
 
     llm_chain, llm = create_chat_bot(
