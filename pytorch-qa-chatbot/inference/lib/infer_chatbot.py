@@ -79,10 +79,18 @@ def run_query_without_callback(
     return
 
 
-def run_query(chain, question, memory, multiturn, top_p, top_k, max_new_tokens, index=None):
+def run_query(
+    chain, question, memory, multiturn, temperature, top_p, top_k, max_new_tokens, index=None
+):
     if isinstance(chain, langchain.agents.agent.AgentExecutor):
         result = chain(
-            {"question": question, "top_p": top_p, "top_k": top_k, "max_new_tokens": max_new_tokens}
+            {
+                "question": question,
+                "temperature": temperature,
+                "top_p": top_p,
+                "top_k": top_k,
+                "max_new_tokens": max_new_tokens,
+            }
         )
         return result["intermediate_steps"][0][0].log.split("Final Answer: ")[-1]
     else:
@@ -93,6 +101,7 @@ def run_query(chain, question, memory, multiturn, top_p, top_k, max_new_tokens, 
                 {
                     "question": question,
                     "context": context,
+                    "temperature": temperature,
                     "top_p": top_p,
                     "top_k": top_k,
                     "max_new_tokens": max_new_tokens,
@@ -103,6 +112,7 @@ def run_query(chain, question, memory, multiturn, top_p, top_k, max_new_tokens, 
             result = chain.run(
                 {
                     "question": question,
+                    "temperature": temperature,
                     "top_p": top_p,
                     "top_k": top_k,
                     "max_new_tokens": max_new_tokens,
