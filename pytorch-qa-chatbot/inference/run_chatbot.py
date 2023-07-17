@@ -1,5 +1,6 @@
 import argparse
 import logging
+import uuid
 
 from lib.chat_ui import launch_gradio_interface
 from lib.create_chatbot import (
@@ -30,7 +31,7 @@ if __name__ == "__main__":
     parser.add_argument("--prompt_name", type=str, default="ONLY_QUESTION_ADVANCED_PROMPT")
     parser.add_argument("--multiturn", type=bool, default=False)
     parser.add_argument("--torchserve_host", type=str, default="localhost")
-    parser.add_argument("--torchserve_port", type=str, default="7070")
+    parser.add_argument("--torchserve_port", type=str, default="80")
     parser.add_argument("--torchserve_protocol", type=str, default="gRPC")
     parser.add_argument("--lora_weights", type=str, default="")
 
@@ -58,7 +59,7 @@ if __name__ == "__main__":
 
     prompt_template = create_prompt_template(
         prompt_str=prompt_str,
-        inputs=["chat_history", "question", "top_p", "top_k", "max_new_tokens"],
+        inputs=["chat_history", "question", "temperature", "top_p", "top_k", "max_new_tokens"],
     )
 
     llm_chain, memory, llm = create_chat_bot(
@@ -68,7 +69,7 @@ if __name__ == "__main__":
         ts_host=args.torchserve_host,
         ts_port=args.torchserve_port,
         ts_protocol=args.torchserve_protocol,
-        max_tokens=args.max_tokens,
+        session_id=str(uuid.uuid1()),
         torchserve=args.torchserve,
     )
     parse_output = True

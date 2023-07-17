@@ -6,3 +6,4 @@ accelerate
 gradio==3.35.2
 faiss-gpu
 huggingface-hub
+uuid

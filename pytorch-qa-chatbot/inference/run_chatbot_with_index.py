@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import uuid
 
 from lib.create_chatbot import (
     load_model,
@@ -43,7 +44,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--index_path", type=str, default="docs_blogs_faiss_index")
     parser.add_argument("--torchserve_host", type=str, default="localhost")
-    parser.add_argument("--torchserve_port", type=str, default="7070")
+    parser.add_argument("--torchserve_port", type=str, default="80")
     parser.add_argument("--torchserve_protocol", type=str, default="gRPC")
 
     args = parser.parse_args()
@@ -66,7 +67,15 @@ if __name__ == "__main__":
 
     prompt_template = create_prompt_template(
         prompt_str=prompt_str,
-        inputs=["chat_history", "question", "context", "top_p", "top_k", "max_new_tokens"],
+        inputs=[
+            "chat_history",
+            "question",
+            "context",
+            "temperature",
+            "top_p",
+            "top_k",
+            "max_new_tokens",
+        ],
     )
 
     chain, memory, llm = create_chat_bot(
@@ -76,7 +85,7 @@ if __name__ == "__main__":
         ts_host=args.torchserve_host,
         ts_port=args.torchserve_port,
         ts_protocol=args.torchserve_protocol,
-        max_tokens=args.max_tokens,
+        session_id=uuid.uuid1(),
         torchserve=args.torchserve,
     )
     # result = run_query(llm_chain=llm_chain, index_path=args.index_path, question="How to save the model", memory=memory)

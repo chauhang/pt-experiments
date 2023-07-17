@@ -82,13 +82,13 @@ def create_chat_bot(
     ts_port=None,
     ts_protocol=None,
     torchserve=False,
-    max_tokens=None,
+    session_id=None,
     enable_memory=True,
 ):
     llm = memory = None
     if torchserve:
         llm = TorchServeEndpoint(
-            host=ts_host, port=ts_port, protocol=ts_protocol, model_name=model_name, verbose=True
+            host=ts_host, port=ts_port, protocol=ts_protocol, model_name=model_name, session_id=session_id, verbose=True
         )
     else:
 
