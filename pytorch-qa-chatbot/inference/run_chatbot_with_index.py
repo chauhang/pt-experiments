@@ -44,7 +44,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--index_path", type=str, default="docs_blogs_faiss_index")
     parser.add_argument("--torchserve_host", type=str, default="localhost")
-    parser.add_argument("--torchserve_port", type=str, default="7070")
+    parser.add_argument("--torchserve_port", type=str, default="80")
     parser.add_argument("--torchserve_protocol", type=str, default="gRPC")
 
     args = parser.parse_args()

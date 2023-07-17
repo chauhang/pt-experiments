@@ -11,6 +11,7 @@ handler:
     model_path: "/home/ubuntu/serve/examples/large_models/Huggingface_pippy/model/models--jagadeesh--vicuna-13b/snapshots/ca289bf4a98a874f27d3fa166b164827b82e6753"
     max_length: 2048
     max_new_tokens: 512
+    temperature: 0.75
     top_p: 0.95
     top_k: 60
     manual_seed: 40

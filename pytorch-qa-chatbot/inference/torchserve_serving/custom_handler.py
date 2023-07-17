@@ -68,6 +68,7 @@ class ModelHandler(BaseHandler, ABC):
         self.top_p = ctx.model_yaml_config["handler"]["top_p"]
         self.top_k = ctx.model_yaml_config["handler"]["top_k"]
         self.max_new_tokens = ctx.model_yaml_config["handler"]["max_new_tokens"]
+        self.temperature = ctx.model_yaml_config["handler"]["temperature"]
 
         logger.info("Transformer model from path %s loaded successfully", model_dir)
 
@@ -99,6 +100,7 @@ class ModelHandler(BaseHandler, ABC):
                     "top_p": self.top_p,
                     "top_k": self.top_k,
                     "max_new_tokens": self.max_new_tokens,
+                    "temperature": self.temperature
                 }
             )
 

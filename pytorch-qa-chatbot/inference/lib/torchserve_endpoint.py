@@ -67,10 +67,10 @@ class TorchServeEndpoint(LLM):
     def _grpc_infer_stream(self, stub, session_id, model_input):
         import inference_pb2
 
-        metadata = (('session_id', session_id))
+        metadata = (("protocol", self.protocol), ("session_id", session_id))
 
         response = stub.StreamPredictions(
-            inference_pb2.PredictionsRequest(model_name=self.model_name, input=model_input, metadata=metadata)
+            inference_pb2.PredictionsRequest(model_name=self.model_name, input={"data": bytes(model_input, "utf-8")}), metadata=metadata
         )
         return response
 
@@ -78,13 +78,15 @@ class TorchServeEndpoint(LLM):
         import requests
 
         headers = {
-            f"Cookie: session_id={session_id}"
+            "protocol": self.protocol
         }
+        session = requests.Session()
+        session.cookies.set(name="session_id",value=session_id)
 
-        response = requests.post(
+        response = session.post(
             host + ":" + port + f"/predictions/{self.model_name}",
             headers=headers,
-            data=model_input,
+            data={"data": model_input},
             stream=True,
         )
         return response
@@ -99,15 +101,13 @@ class TorchServeEndpoint(LLM):
     ) -> str:
         print("Model Name: ", self.model_name, "Input: ", prompt)
 
-        input_data = {"data": bytes(prompt, "utf-8")}
-
         if self.streaming:
             self.response = (
-                self._rest_infer_stream(self.host, self.port, self.session_id, input_data).iter_content(
+                self._rest_infer_stream(self.host, self.port, self.session_id, prompt).iter_content(
                     chunk_size=None
                 )
                 if self.protocol == "REST"
-                else self._grpc_infer_stream(self.client, self.session_id, input_data)
+                else self._grpc_infer_stream(self.client, self.session_id, prompt)
             )
             return ""
 
@@ -121,16 +121,15 @@ class TorchServeEndpoint(LLM):
     ) -> str:
         print("Model Name: ", self.model_name, "Input: ", prompt)
 
-        input_data = {"data": bytes(prompt, "utf-8")}
 
         if self.streaming:
             combined_text_output = ""
             self.response = (
-                self._rest_infer_stream(self.host, self.port, input_data).iter_content(
+                self._rest_infer_stream(self.host, self.port, prompt).iter_content(
                     chunk_size=None
                 )
                 if self.protocol == "REST"
-                else self._grpc_infer_stream(self.client, input_data)
+                else self._grpc_infer_stream(self.client, prompt)
             )
             for resp in self.response:
                 prediction = (

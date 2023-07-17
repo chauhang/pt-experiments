@@ -31,7 +31,7 @@ if __name__ == "__main__":
     parser.add_argument("--prompt_name", type=str, default="ONLY_QUESTION_ADVANCED_PROMPT")
     parser.add_argument("--multiturn", type=bool, default=False)
     parser.add_argument("--torchserve_host", type=str, default="localhost")
-    parser.add_argument("--torchserve_port", type=str, default="7070")
+    parser.add_argument("--torchserve_port", type=str, default="80")
     parser.add_argument("--torchserve_protocol", type=str, default="gRPC")
     parser.add_argument("--lora_weights", type=str, default="")
 
@@ -69,7 +69,7 @@ if __name__ == "__main__":
         ts_host=args.torchserve_host,
         ts_port=args.torchserve_port,
         ts_protocol=args.torchserve_protocol,
-        session_id=uuid.uuid1(),
+        session_id=str(uuid.uuid1()),
         torchserve=args.torchserve,
     )
     parse_output = True

@@ -20,6 +20,7 @@ else:
         "PyTorch version is less than 2.0.0, initializing with meta device needs PyTorch 2.0.0 and greater"
     )
 
+
 class ModelHandler(BaseHandler, ABC):
     def __init__(self):
         super(ModelHandler, self).__init__()
@@ -48,20 +49,26 @@ class ModelHandler(BaseHandler, ABC):
         dtype = dtypes.get(dtype_str, torch.float32)
 
         self.model = LlamaForCausalLM.from_pretrained(
-            model_path, 
-            use_cache=False, 
-            max_memory={i: ctx.model_yaml_config["handler"]["max_gpu_memory"] for i in range(ctx.model_yaml_config["handler"]["num_gpus"])},
+            model_path,
+            use_cache=False,
+            max_memory={
+                i: ctx.model_yaml_config["handler"]["max_gpu_memory"]
+                for i in range(ctx.model_yaml_config["handler"]["num_gpus"])
+            },
             low_cpu_mem_usage=ctx.model_yaml_config["handler"]["low_cpu_mem_usage"],
             device_map=ctx.model_yaml_config["handler"]["device_map"],
-            torch_dtype=dtype
+            torch_dtype=dtype,
         )
 
-        self.tokenizer = LlamaTokenizer.from_pretrained(model_path, use_fast=False, return_tensors="pt")
+        self.tokenizer = LlamaTokenizer.from_pretrained(
+            model_path, use_fast=False, return_tensors="pt"
+        )
         self.streamer = TextIteratorStreamer(self.tokenizer)
 
         self.top_p = ctx.model_yaml_config["handler"]["top_p"]
         self.top_k = ctx.model_yaml_config["handler"]["top_k"]
         self.max_new_tokens = ctx.model_yaml_config["handler"]["max_new_tokens"]
+        self.temperature = ctx.model_yaml_config["handler"]["temperature"]
 
         logger.info("Transformer model from path %s loaded successfully", model_dir)
 
@@ -86,8 +93,17 @@ class ModelHandler(BaseHandler, ABC):
             logger.info("Received text: %s", input_text)
             inputs = input_text.split("||")
             prompt = inputs[0]
-            self.model_kwargs = json.loads(inputs[1]) if len(inputs) > 1 else {"top_p":self.top_p,"top_k":self.top_k, "max_new_tokens": self.max_new_tokens}
-            
+            self.model_kwargs = (
+                json.loads(inputs[1])
+                if len(inputs) > 1
+                else {
+                    "top_p": self.top_p,
+                    "top_k": self.top_k,
+                    "max_new_tokens": self.max_new_tokens,
+                    "temperature": self.temperature
+                }
+            )
+
             inputs = self.tokenizer(
                 [prompt],
                 return_tensors="pt",
@@ -105,12 +121,20 @@ class ModelHandler(BaseHandler, ABC):
 
         inputs = inputs.to(self.device)
         logger.info("Model kwargs for genrate %s", self.model_kwargs)
-        generation_kwargs = dict(inputs, streamer=self.streamer, do_sample=True, **self.model_kwargs)
+        generation_kwargs = dict(
+            inputs, streamer=self.streamer, do_sample=True, **self.model_kwargs
+        )
         thread = Thread(target=self.model.generate, kwargs=generation_kwargs)
         thread.start()
 
         for new_text in self.streamer:
-            send_intermediate_predict_response([new_text], self.context.request_ids, "Intermediate Prediction success", 200, self.context)
+            send_intermediate_predict_response(
+                [new_text],
+                self.context.request_ids,
+                "Intermediate Prediction success",
+                200,
+                self.context,
+            )
         return ["</s><s>"]
 
     def postprocess(self, inference_output):

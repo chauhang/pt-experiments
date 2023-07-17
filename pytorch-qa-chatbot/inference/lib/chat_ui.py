@@ -136,10 +136,10 @@ def launch_gradio_interface(
                 history[-1][1] += new_text
                 yield history
 
-    def torchserve_bot(history, top_p, top_k, max_new_tokens):
+    def torchserve_bot(history, temperature, top_p, top_k, max_new_tokens):
         global stop_btn
         logger.info(
-            f"Sending Query! {history[-1][0]} with top_p {top_p} top_k {top_k} and max_new_tokens {max_new_tokens}"
+            f"Sending Query! {history[-1][0]} with temperature {temperature} with top_p {top_p} top_k {top_k} and max_new_tokens {max_new_tokens}"
         )
         run_query_without_callback(
             chain,
@@ -147,6 +147,7 @@ def launch_gradio_interface(
             memory,
             multiturn,
             index,
+            temperature=temperature,
             top_p=top_p,
             top_k=top_k,
             max_new_tokens=max_new_tokens,
@@ -172,10 +173,10 @@ def launch_gradio_interface(
                 history[-1][1] += prediction
                 yield history
 
-    async def torchserve_callback_bot(history, top_p, top_k, max_new_tokens):
+    async def torchserve_callback_bot(history, temperature, top_p, top_k, max_new_tokens):
         global stop_btn
         logger.info(
-            f"Sending Query! {history[-1][0]} with top_p {top_p} top_k {top_k} and max_new_tokens {max_new_tokens}"
+            f"Sending Query! {history[-1][0]} with temperature {temperature} with top_p {top_p} top_k {top_k} and max_new_tokens {max_new_tokens}"
         )
         run = asyncio.create_task(
             run_query_with_callback(
@@ -185,6 +186,7 @@ def launch_gradio_interface(
                 callback=callback,
                 multiturn=multiturn,
                 index=index,
+                temperature=temperature,
                 top_p=top_p,
                 top_k=top_k,
                 max_new_tokens=max_new_tokens,
@@ -218,7 +220,7 @@ def launch_gradio_interface(
                 generate = gr.Button(value="Send", elem_id="send_button")
         with gr.Row().style(equal_height=True):
             temperature = gr.Slider(
-                minimum=0, maximum=1, step=0.01, label="temperature", value=0, interactive=True
+                minimum=0, maximum=1, step=0.01, label="temperature", value=0.75, interactive=True
             )
             top_p = gr.Slider(
                 minimum=0, maximum=1, step=0.01, label="top_p", value=1, interactive=True
