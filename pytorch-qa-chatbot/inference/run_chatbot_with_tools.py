@@ -1,12 +1,12 @@
 import logging
 
-from create_chatbot import load_model, create_chat_bot
 from langchain import PromptTemplate
 from langchain.agents import AgentType
 from langchain.agents import Tool
 from langchain.agents import initialize_agent
 from langchain.utilities import WikipediaAPIWrapper
 from lib.chat_ui import launch_gradio_interface
+from lib.create_chatbot import load_model, create_chat_bot
 
 logging.basicConfig(
     filename="pytorch-chatbot-with-index.log",
@@ -60,14 +60,12 @@ def create_llm_chain():
         "\n\n### Instruction:\n{question}\n\n### Response:\n"
     )
 
-    prompt = PromptTemplate(
-        template=prompt_template, input_variables=["question", "top_p", "top_k", "max_new_tokens"]
-    )
+    prompt = PromptTemplate(template=prompt_template, input_variables=["question"])
 
-    llm_chain, llm = create_chat_bot(
+    llm_chain, memory, llm = create_chat_bot(
         model_name=model_name,
         model=model,
-        prompt=prompt,
+        prompt_template=prompt,
         max_tokens=max_tokens,
         enable_memory=False,
     )
@@ -81,6 +79,8 @@ def create_agent_chain(chain):
     tools = create_tools(chain=chain, wikipedia=wikipedia)
 
     a_chain = init_agent(tools, chain.llm)
+
+    a_chain.agent.llm_chain.prompt.input_variables = ["question", "agent_scratchpad"]
 
     template = """Answer the following questions as best you can. You have access to the following tools:
 
@@ -100,21 +100,14 @@ def create_agent_chain(chain):
 
      Begin!
 
-     Question: {input}
-     Thought:{agent_scratchpad}"""
+     Question: {question}
+     Thought:{agent_scratchpad} || {{\"top_p\":1,\"top_k\":50,\"max_new_tokens\":128}}"""
 
     a_chain.agent.llm_chain.prompt.template = template
     return a_chain
 
 
-# def run_query(chain):
-#     answer = chain('how do i check if pytorch is using gpu?')
-#
-#     print(answer['intermediate_steps'][0][0].log.split('Final Answer: ')[-1])
-#
-
-
 if __name__ == "__main__":
     llm_chain = create_llm_chain()
     agent_chain = create_agent_chain(chain=llm_chain)
-    launch_gradio_interface(chain=agent_chain, memory=None)
+    launch_gradio_interface(chain=agent_chain, memory=None, torchserve=False, callback_flag=False)

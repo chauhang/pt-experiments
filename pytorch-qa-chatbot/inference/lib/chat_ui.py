@@ -1,13 +1,14 @@
+import asyncio
 import logging
-from typing import Iterable
-import gradio as gr
 import time
+from typing import Iterable
+
+import gradio as gr
+import langchain
 from gradio.themes.base import Base
 from gradio.themes.utils import colors, fonts, sizes
-import asyncio
-from lib.infer_chatbot import run_query, run_query_with_callback, run_query_without_callback
 from langchain.callbacks import AsyncIteratorCallbackHandler
-
+from lib.infer_chatbot import run_query, run_query_with_callback, run_query_without_callback
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +103,10 @@ def launch_gradio_interface(
         )
         logger.info(f"Response: {bot_message}")
         history[-1][1] = ""
-        streamer = chain.llm.streamer
+        if isinstance(chain, langchain.agents.agent.AgentExecutor):
+            streamer = chain.agent.llm_chain.llm.streamer
+        else:
+            streamer = chain.llm.streamer
 
         if parse_output:
             foo = ""
@@ -111,6 +115,10 @@ def launch_gradio_interface(
                 print(new_text)
                 foo += new_text
                 if "### Response:" in foo:
+                    response_flag = True
+                    foo = ""
+                    continue
+                elif "Final Answer:" in foo:
                     response_flag = True
                     foo = ""
                     continue

@@ -81,9 +81,7 @@ def run_query_without_callback(
 
 def run_query(chain, question, memory, multiturn, top_p, top_k, max_new_tokens, index=None):
     if isinstance(chain, langchain.agents.agent.AgentExecutor):
-        result = chain(
-            {"question": question, "top_p": top_p, "top_k": top_k, "max_new_tokens": max_new_tokens}
-        )
+        result = chain({"question": question})
         return result["intermediate_steps"][0][0].log.split("Final Answer: ")[-1]
     else:
         if index:
