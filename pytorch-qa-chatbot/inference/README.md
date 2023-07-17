@@ -14,7 +14,7 @@ Install the required packages
 pip install -r requirements.txt
 ```
 
-### Serve Model with Torchserve 
+## Serve Model with Torchserve
 
 ##### Clone Repo
 
@@ -112,6 +112,67 @@ To test multi turn qa with vicuna 13b model with index, run the following comman
 
 ```bash
 python run_chatbot_with_index.py --model_name vicuna-13b
+```
+
+Copy the public url from terminal, paste it in browser and start testing
+
+## Serve Model without Torchserve
+
+#### Login to Huggingface to download the model
+
+```bash
+export HUGGINGFACE_KEY = 'YOUR HUGGINGFACE KEY HERE'
+```
+
+### Single QA with finetuned model
+
+To test single qa with finetuned model, run the following command
+
+```bash
+python run_chatbot.py --model_name alpaca-7b
+```
+
+Copy the public url from terminal, paste it in browser and start testing
+
+### Single QA with finetuned falcon model
+
+To test single qa with finetuned model, run the following command
+
+```bash
+python run_chatbot.py --model_name tiiuae/falcon-40b-instruct --lora_weights <user-name>/falcon-40b-answer-summary
+```
+
+Copy the public url from terminal, paste it in browser and start testing
+
+### Multi-turn QA with finetuned model
+
+To test single qa with finetuned model, run the following command
+
+```bash
+python run_chatbot.py --model_name alpaca-7b --multiturn True
+```
+
+Copy the public url from terminal, paste it in browser and start testing
+
+### Single QA with finetuned model and index
+
+To test single qa with finetuned model with index, run the following command
+
+Download and extract index from s3
+
+```bash
+python run_chatbot_with_index.py --model_name alpaca-7b
+```
+
+Copy the public url from terminal, paste it in browser and start testing
+
+### Single QA with vicuna 13b model and tools
+
+To test single qa with finetuned model with index, run the following command
+
+
+```bash
+python run_chatbot_with_tools.py --model_name <user-name>/vicuna-13b
 ```
 
 Copy the public url from terminal, paste it in browser and start testing
