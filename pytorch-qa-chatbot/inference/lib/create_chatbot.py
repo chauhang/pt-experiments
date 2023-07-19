@@ -92,7 +92,7 @@ def create_chat_bot(
         )
     else:
 
-        if "alpaca" or "vicuna" in model_name.lower():
+        if "alpaca" in model_name.lower() or "vicuna" in model_name.lower():
             tokenizer = LlamaTokenizer.from_pretrained(model_name, use_auth_token=True)
         else:
             tokenizer = AutoTokenizer.from_pretrained(model_name)
