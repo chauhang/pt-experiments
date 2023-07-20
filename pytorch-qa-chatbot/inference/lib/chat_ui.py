@@ -6,6 +6,8 @@ from gradio.themes.base import Base
 from gradio.themes.utils import colors, fonts, sizes
 import asyncio
 from lib.infer_chatbot import run_query, run_query_with_callback, run_query_without_callback
+import langchain
+import threading
 from langchain.callbacks import AsyncIteratorCallbackHandler
 
 
@@ -78,9 +80,9 @@ def launch_gradio_interface(
         return gr.update(value="", interactive=False), history + [[user_message, None]]
 
     def stop_gen():
-        global stop_btn
-        stop_btn = True
-        return
+        global stop
+        stop = True
+        return ""
 
     def mem_clear():
         logger.info("Clearing memory")
@@ -102,15 +104,27 @@ def launch_gradio_interface(
         )
         logger.info(f"Response: {bot_message}")
         history[-1][1] = ""
-        streamer = chain.llm.streamer
+        if isinstance(chain, langchain.agents.agent.AgentExecutor):
+            streamer = chain.agent.llm_chain.llm.streamer
+        else:
+            streamer = chain.llm.streamer
 
+        global stop
+        stop = False
         if parse_output:
             foo = ""
             response_flag = False
             for new_text in streamer:
+                if stop == True:
+                    print("stopping")
+                    break
                 print(new_text)
                 foo += new_text
                 if "### Response:" in foo:
+                    response_flag = True
+                    foo = ""
+                    continue
+                elif "Final Answer:" in foo:
                     response_flag = True
                     foo = ""
                     continue
