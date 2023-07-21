@@ -1,15 +1,14 @@
+import asyncio
 import logging
-from typing import Iterable
-import gradio as gr
 import time
+from typing import Iterable
+
+import gradio as gr
+import langchain
 from gradio.themes.base import Base
 from gradio.themes.utils import colors, fonts, sizes
-import asyncio
-from lib.infer_chatbot import run_query, run_query_with_callback, run_query_without_callback
-import langchain
-import threading
 from langchain.callbacks import AsyncIteratorCallbackHandler
-
+from lib.infer_chatbot import run_query, run_query_with_callback, run_query_without_callback
 
 logger = logging.getLogger(__name__)
 
