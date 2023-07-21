@@ -79,17 +79,17 @@ def launch_gradio_interface(
         return gr.update(value="", interactive=False), history + [[user_message, None]]
 
     def stop_gen():
-        global stop_btn
-        stop_btn = True
-        return
+        global stop
+        stop = True
+        return ""
 
     def mem_clear():
         logger.info("Clearing memory")
         memory.clear()
 
-    def bot(history, top_p, top_k, max_new_tokens):
+    def bot(history, temperature, top_p, top_k, max_new_tokens):
         logger.info(
-            f"Sending Query! {history[-1][0]} with top_p {top_p} top_k {top_k} and max_new_tokens {max_new_tokens}"
+            f"Sending Query! {history[-1][0]} with temperature {temperature} top_p {top_p} top_k {top_k} and max_new_tokens {max_new_tokens}"
         )
         bot_message = run_query(
             chain=chain,
@@ -97,6 +97,7 @@ def launch_gradio_interface(
             memory=memory,
             multiturn=multiturn,
             index=index,
+            temperature=temperature,
             top_p=top_p,
             top_k=top_k,
             max_new_tokens=max_new_tokens,
@@ -108,10 +109,15 @@ def launch_gradio_interface(
         else:
             streamer = chain.llm.streamer
 
+        global stop
+        stop = False
         if parse_output:
             foo = ""
             response_flag = False
             for new_text in streamer:
+                if stop == True:
+                    print("stopping")
+                    break
                 print(new_text)
                 foo += new_text
                 if "### Response:" in foo:
@@ -224,6 +230,9 @@ def launch_gradio_interface(
             with gr.Column(scale=1):
                 generate = gr.Button(value="Send", elem_id="send_button")
         with gr.Row().style(equal_height=True):
+            temperature = gr.Slider(
+                minimum=0, maximum=1, step=0.01, label="temperature", value=0, interactive=True
+            )
             top_p = gr.Slider(
                 minimum=0, maximum=1, step=0.01, label="top_p", value=1, interactive=True
             )
@@ -245,7 +254,7 @@ def launch_gradio_interface(
             bot = bot
 
         res = generate.click(user, [msg, chatbot], [msg, chatbot], queue=False).then(
-            bot, [chatbot, top_p, top_k, max_new_tokens], chatbot
+            bot, [chatbot, temperature, top_p, top_k, max_new_tokens], chatbot
         )
 
         res.then(lambda: gr.update(interactive=True), None, [msg], queue=False)

@@ -1,19 +1,24 @@
 import json
 import logging
 import os
-
-import huggingface_hub as hf_hub
-from langchain import PromptTemplate, LLMChain
-from langchain.memory import ConversationBufferWindowMemory
-from langchain.llms.base import LLM
-import torch
-from transformers import LlamaForCausalLM
-from transformers import LlamaTokenizer
-from lib.torchserve_endpoint import TorchServeEndpoint
-from transformers import TextIteratorStreamer
 from threading import Thread
 from typing import Optional
-from transformers import AutoTokenizer, AutoModelForCausalLM
+
+import huggingface_hub as hf_hub
+import torch
+from langchain import PromptTemplate, LLMChain
+from langchain.llms.base import LLM
+from langchain.memory import ConversationBufferWindowMemory
+from lib.torchserve_endpoint import TorchServeEndpoint
+from transformers import (
+    AutoTokenizer,
+    AutoModelForCausalLM,
+    StoppingCriteria,
+    StoppingCriteriaList,
+    LlamaForCausalLM,
+    LlamaTokenizer,
+    TextIteratorStreamer,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +103,21 @@ def create_chat_bot(
             tokenizer = AutoTokenizer.from_pretrained(model_name)
             tokenizer.pad_token = tokenizer.eos_token
 
+        class StoppingCriteriaSub(StoppingCriteria):
+            def __init__(self, stops=[]):
+                super().__init__()
+                self.stop_words_ids = [
+                    tokenizer(stop_word, return_tensors="pt")["input_ids"].squeeze()
+                    for stop_word in ["<|endoftext|>"]
+                ]
+
+            def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor):
+                self.stops = []
+                for stop_id in self.stop_words_ids:
+                    if input_ids[0][-1] == stop_id:
+                        return True
+                return False
+
         class CustomLLM(LLM):
 
             """Streamer Object"""
@@ -109,6 +129,7 @@ def create_chat_bot(
                 splitted_prompt, params = prompt.split("||")
                 inputs = tokenizer([splitted_prompt], return_tensors="pt")
                 params_dict = json.loads(params)
+                params_dict["stopping_criteria"] = StoppingCriteriaList([StoppingCriteriaSub()])
                 inputs = inputs.to("cuda")
                 generation_kwargs = dict(
                     input_ids=inputs["input_ids"], streamer=self.streamer, **params_dict
