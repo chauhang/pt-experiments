@@ -1,0 +1,12 @@
+#frontend settings
+minWorkers: 1
+maxWorkers: 1
+batchSize: 1
+maxBatchDelay: 100
+responseTimeout: 120
+deviceType: gpu # cpu, gpu, neuron
+deviceIds: [0,1,2.3] # device index for gpu, neuron
+
+handler:
+    model_name: "hkunlp/instructor-xl"
+
