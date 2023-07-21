@@ -58,7 +58,7 @@ if __name__ == "__main__":
 
     prompt_template = create_prompt_template(
         prompt_str=prompt_str,
-        inputs=["chat_history", "question", "top_p", "top_k", "max_new_tokens"],
+        inputs=["chat_history", "question", "temperature", "top_p", "top_k", "max_new_tokens"],
     )
 
     llm_chain, memory, llm = create_chat_bot(
