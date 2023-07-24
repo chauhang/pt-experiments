@@ -115,7 +115,7 @@ def launch_gradio_interface(
             foo = ""
             response_flag = False
             for new_text in streamer:
-                if stop == True:
+                if stop:
                     print("stopping")
                     break
                 print(new_text)
@@ -143,6 +143,8 @@ def launch_gradio_interface(
                     yield history
         else:
             for new_text in streamer:
+                if stop:
+                    break
                 print("new text: ", new_text)
                 if "---\Answer:" in new_text or "<|endoftext|>" in new_text:
                     break
