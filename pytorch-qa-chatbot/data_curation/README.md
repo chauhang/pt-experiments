@@ -28,11 +28,13 @@ python extract_blogs.py --folder_path 'knowledgebase' --source_name 'blogs'
 
 PyTorch docs are integrated with the Sphinx document scheme.
 
-Follow the instructions from [Build the documentation](https://github.com/pytorch/pytorch#building-the-documentation)
+Follow the instructions from [Build the documentation](https://github.com/pytorch/pytorch#building-the-documentation).
+
+Once the text files are generated, zip the folder as `text.zip`
 
 Or
 
-Unzip the `text.zip` file for already built docs
+Unzip the [text.zip](text.zip) file for already built docs
 
 Once the `text` archive is extracted, run the following command 
 
